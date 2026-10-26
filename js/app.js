@@ -92,6 +92,8 @@
     // Reservas solo aparece si el condominio tiene áreas que se apartan
     var hayAreas = CC.Store.amenidades().length > 0;
     document.querySelectorAll('[data-route="reservas"]').forEach(function (a) { a.hidden = !hayAreas; });
+    var hayVisitas = !!CC.Store.condominio().registroVisitas;
+    document.querySelectorAll('[data-route="visitas"]').forEach(function (a) { a.hidden = !hayVisitas; });
 
     marcarNavegacion();
     actualizarBadge();

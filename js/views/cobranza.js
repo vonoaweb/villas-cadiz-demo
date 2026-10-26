@@ -74,7 +74,12 @@ CC.vistas.cobranza = {
       var delMes = cargosPorUnidad[u.id] || 0;
       var pagado = pagadoPorUnidad[u.id] || 0;
       var clase = s.estado === 'moroso' ? 'row--crit' : s.estado === 'vencido' ? 'row--warn' : '';
-      var cubierto = delMes > 0 && pagado >= delMes - 0.005;
+      // el mes cuenta como pagado si sus cargos quedaron cubiertos, aunque el
+      // dinero haya entrado otro mes (anualidad, pago adelantado)
+      var pendMes = s.lineas.filter(function (l) { return l.cargo.periodo === p; })
+        .reduce(function (a, l) { return a + l.pendiente; }, 0);
+      var cubierto = delMes > 0 && pendMes <= 0.005;
+      var adelantado = cubierto && pagado < 0.005;
 
       return '<tr class="' + clase + '">' +
         '<td><a href="#/unidad/' + esc(u.id) + '" class="strong">' + esc(u.clave) + '</a>' +
@@ -83,8 +88,8 @@ CC.vistas.cobranza = {
         '<td class="r" style="color:' + (pagado > 0 ? 'var(--good)' : 'var(--muted)') + '">' +
         (pagado ? esc(CC.fmt.money2(pagado)) : '—') + '</td>' +
         '<td class="c">' + (cubierto
-          ? '<span class="pill pill--good">Pagado</span>'
-          : pagado > 0 ? '<span class="pill pill--warn">Parcial</span>'
+          ? '<span class="pill pill--good">' + (adelantado ? 'Adelantado' : 'Pagado') + '</span>'
+          : pendMes < delMes - 0.005 ? '<span class="pill pill--warn">Parcial</span>'
             : '<span class="pill pill--mute">Pendiente</span>') + '</td>' +
         '<td class="r ' + (s.saldo > 0.005 ? 'strong' : 'muted') + '">' + esc(CC.fmt.money2(Math.max(0, s.saldo))) + '</td>' +
         '<td class="c">' + CC.ui.pill(s.estado) + '</td>' +
@@ -241,6 +246,12 @@ CC.vistas.cobranza = {
       '<input class="input num" id="pMonto" type="number" min="0" step="0.01" value="' + esc(sugerido(elegida)) + '">' +
       '<span class="field__hint" id="pHint"></span></label>' +
 
+      '<label class="field"><span class="field__lab">Qué paga</span>' +
+      '<select class="input" id="pQue"><option value="0">Lo que debe o la cuota del mes</option>' +
+      '<option value="3">Adelantar 3 meses</option><option value="6">Adelantar 6 meses</option>' +
+      '<option value="12">Anualidad: 12 meses' + (Number(CC.Store.condominio().mesesGratisAnualidad)
+        ? ' (' + CC.Store.condominio().mesesGratisAnualidad + ' gratis)' : '') + '</option></select></label>' +
+
       '<label class="field"><span class="field__lab">Fecha del pago</span>' +
       '<input class="input" id="pFecha" type="date" value="' + esc(CC.per.hoyISO()) + '"></label>' +
 
@@ -295,16 +306,41 @@ CC.vistas.cobranza = {
         pista();
         if (cvActual && cvActual.siguiente) inMonto.value = cvActual.siguiente.monto.toFixed(2);
 
+        /* Pagos por adelantado: las cuotas de los meses que vienen se crean al registrar */
+        var selQue = cuerpo.querySelector('#pQue');
+        var adelanto = [];
+        function calcularAdelanto() {
+          var n = Number(selQue.value) || 0;
+          if (!n) { adelanto = []; pista(); return; }
+          var gratis = n === 12 ? (Number(CC.Store.condominio().mesesGratisAnualidad) || 0) : 0;
+          adelanto = CC.Model.proyectarAdelanto(selU.value, n, gratis);
+          var s = CC.Model.situacion(selU.value, periodo);
+          var total = adelanto.reduce(function (a, c) { return a + c.monto; }, 0) + Math.max(0, s.saldo);
+          inMonto.value = total.toFixed(2);
+          hint.textContent = 'Cubre de ' + CC.fmt.periodoCorto(adelanto[0].periodo) + ' a ' +
+            CC.fmt.periodoCorto(adelanto[adelanto.length - 1].periodo) +
+            (gratis ? ' · ' + gratis + (gratis === 1 ? ' mes gratis' : ' meses gratis') : '') +
+            (s.saldo > 0.005 ? ' · incluye lo que debe (' + CC.fmt.money2(s.saldo) + ')' : '');
+        }
+        selQue.onchange = calcularAdelanto;
+
         selU.onchange = function () {
           inMonto.value = sugerido(selU.value);
           pista();
           if (cvActual && cvActual.siguiente) inMonto.value = cvActual.siguiente.monto.toFixed(2);
+          if (Number(selQue.value)) calcularAdelanto();
         };
         cuerpo.querySelector('#pCancel').onclick = CC.ui.cerrarModal;
 
         cuerpo.querySelector('#pOk').onclick = function () {
           var monto = Number(inMonto.value);
           if (!(monto > 0)) { CC.ui.toast('Captura un monto mayor a cero', 'crit'); return; }
+          if (adelanto.length) CC.Store.agregarCargos(adelanto.map(function (c) { return Object.assign({}, c); }));
+          var nAd = Number(selQue.value) || 0;
+          var notaAd = nAd && adelanto.length
+            ? (nAd === 12 ? 'Anualidad ' : 'Pago adelantado ') + CC.fmt.periodoCorto(adelanto[0].periodo) + ' – ' +
+              CC.fmt.periodoCorto(adelanto[adelanto.length - 1].periodo)
+            : '';
           var pago = CC.Store.agregarPago({
             unidadId: selU.value,
             monto: monto,
@@ -313,7 +349,7 @@ CC.vistas.cobranza = {
             metodo: cuerpo.querySelector('#pMetodo').value,
             referencia: cuerpo.querySelector('#pRef').value.trim(),
             convenioId: cvActual && cvCheck.checked ? cvActual.convenio.id : null,
-            nota: cuerpo.querySelector('#pNota').value.trim()
+            nota: cuerpo.querySelector('#pNota').value.trim() || notaAd
           });
           CC.vistas.cobranza.pagoListo(pago.id);
         };

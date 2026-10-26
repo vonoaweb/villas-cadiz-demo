@@ -154,6 +154,22 @@ CC.vistas.panel = {
 
     out.push('<div class="split">' + cobranza + egresos + '</div>');
 
+    /* --- Caseta: quién entró hoy y quién viene --- */
+    if (CC.Store.condominio().registroVisitas) {
+      var hoyV = CC.per.hoyISO();
+      var entraron = CC.Model.visitasDel(hoyV).filter(function (v) { return v.estado !== 'esperada'; }).length;
+      var dentroV = CC.Model.visitasDentro();
+      var esperadasV = CC.Model.visitasEsperadas().filter(function (v) { return v.fecha === hoyV; });
+      out.push('<div class="panelbox">' +
+        '<div class="panelbox__head"><h3>En la caseta hoy</h3>' +
+        '<a class="btn btn--sm btn--soft" href="#/visitas">Ver visitas</a></div>' +
+        '<div class="panelbox__body" style="display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13px">' +
+        '<span><b class="num">' + entraron + '</b> entradas</span>' +
+        '<span><b class="num">' + dentroV.length + '</b> dentro ahora</span>' +
+        '<span><b class="num">' + esperadasV.length + '</b> avisadas por los vecinos</span>' +
+        '</div></div>');
+    }
+
     /* --- Canchas: lo apartado hoy --- */
     var areas = CC.Store.amenidades();
     if (areas.length) {
@@ -161,7 +177,7 @@ CC.vistas.panel = {
       var deHoy = CC.Model.reservasDel(hoyISO);
       var totalHoras = areas.reduce(function (t, a) { return t + CC.Model.horasDe(a).length; }, 0);
       out.push('<div class="panelbox">' +
-        '<div class="panelbox__head"><h3>Hoy en las canchas</h3>' +
+        '<div class="panelbox__head"><h3>Hoy en ' + esc(areas.length > 1 ? 'las áreas comunes' : areas[0].nombre.toLowerCase()) + '</h3>' +
         '<a class="btn btn--sm btn--soft" href="#/reservas">Apartar</a></div>' +
         (deHoy.length
           ? '<ul class="reslista">' + deHoy.slice(0, 6).map(function (r) {

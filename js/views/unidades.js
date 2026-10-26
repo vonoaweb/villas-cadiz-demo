@@ -380,7 +380,9 @@ CC.vistas.unidad = {
       {
         lab: 'Saldo', val: CC.fmt.money2(Math.abs(s.saldo)),
         tono: s.saldo > 0.005 ? 'crit' : 'good',
-        nota: '<span>' + (s.saldo > 0.005 ? 'por cobrar' : s.saldo < -0.005 ? 'a favor del residente' : 'sin adeudo') + '</span>'
+        nota: '<span>' + (s.saldo > 0.005 ? 'por cobrar'
+          : s.saldo < -0.005 ? 'a favor' + (CC.Model.pagadoHasta(u.id) ? ' · pagado hasta ' + esc(CC.fmt.periodoCorto(CC.Model.pagadoHasta(u.id))) : '')
+          : 'sin adeudo') + '</span>'
       },
       {
         lab: 'Meses vencidos', val: String(s.mesesVencidos),
@@ -499,7 +501,19 @@ CC.vistas.unidad = {
 
     return '<p class="noprint"><a href="#/unidades" class="btn btn--sm btn--ghost">' +
       CC.ui.icono('volver', 'i--sm') + ' Padrón de casas</a></p>' +
-      cifras + bloqueConvenio + cabecera + bitacora;
+      cifras + bloqueConvenio + cabecera + bitacora + bloqueVisitas(u);
+
+    /* Las últimas visitas de la casa, si el condominio lleva el registro */
+    function bloqueVisitas(casa) {
+      if (!cond.registroVisitas) return '';
+      var l = CC.Model.visitasDe(casa.id).slice(0, 6);
+      return '<div class="panelbox"><div class="panelbox__head"><h3>Visitas de la casa</h3>' +
+        '<a class="btn btn--sm btn--soft" href="#/visitas">Registro de visitas</a></div>' +
+        (l.length ? '<ul class="reslista">' + l.map(function (v) {
+          return '<li><span><b>' + esc(v.nombre) + '</b> · ' + esc(v.tipo) + '</span><span class="muted mono" style="font-size:12px">' +
+            esc(v.estado === 'esperada' ? 'esperada ' + CC.fmt.fecha(v.fecha) : CC.fmt.fecha(v.fecha) + ' ' + (v.entrada || '')) + '</span></li>';
+        }).join('') + '</ul>' : '<div class="empty"><strong>Sin visitas registradas</strong></div>') + '</div>';
+    }
   },
 
   montar: function (raiz) {

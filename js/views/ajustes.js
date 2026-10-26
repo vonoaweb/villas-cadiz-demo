@@ -51,7 +51,11 @@ CC.vistas.ajustes = {
       campoNum('cAvisoDias', 'Avisar a los … días', c.avisoDiasTras, 'Días después del vencimiento para el primer aviso') +
       campoNum('cAvisoCada', 'Repetir aviso cada … días', c.avisoRepetirDias, 'Mientras la casa siga debiendo') +
       campoNum('cFondoCaja', 'Fondo de caja chica', c.fondoCajaChica, 'Efectivo fijo para gastos menores') +
+      campoNum('cAnual', 'Meses gratis por pagar el año', c.mesesGratisAnualidad || 0, '0 = la anualidad no tiene descuento') +
       '</div>' +
+      '<label class="check" style="background:var(--surface-2);border-color:var(--rule);color:var(--ink-2)">' +
+      '<input type="checkbox" id="cVisitas"' + (c.registroVisitas ? ' checked' : '') + '> ' +
+      'Llevar el registro de visitas de la caseta</label>' +
       '<div class="note" style="margin-top:16px"><div>' +
       'Con un presupuesto de <strong>' + esc(CC.fmt.money(c.presupuestoMensual)) + '</strong> repartido entre ' +
       CC.Store.unidades().length + ' casas, las cuotas suman <strong>' + esc(CC.fmt.money(cuotaTotal)) + '</strong> al mes. ' +
@@ -95,7 +99,8 @@ CC.vistas.ajustes = {
       '<button class="btn btn--sm btn--ghost" id="bNuevaArea">Agregar área</button></div>' +
       '<div class="tablewrap"><table class="ledger">' +
       '<thead><tr><th>Área</th><th>Abre</th><th>Cierra</th><th class="r">Horas por casa al día</th>' +
-      '<th class="r">Días de anticipación</th><th class="r">No aparta con … meses de adeudo</th><th class="noprint"></th></tr></thead>' +
+      '<th class="r">Días de anticipación</th><th class="r">No aparta con … meses de adeudo</th>' +
+      '<th class="r">Renta</th><th class="r">Depósito</th><th class="noprint"></th></tr></thead>' +
       '<tbody>' + (ams.length ? ams.map(function (a, i) {
         function inp(campo, tipo, extra) {
           return '<input class="input input--sm' + (tipo === 'number' ? ' num' : '') + '" type="' + tipo + '" data-area="' + i +
@@ -106,9 +111,11 @@ CC.vistas.ajustes = {
           '<td class="r">' + inp('maxHorasDia', 'number', ' min="1" max="6" style="width:70px;text-align:right"') + '</td>' +
           '<td class="r">' + inp('anticipacionDias', 'number', ' min="1" max="60" style="width:70px;text-align:right"') + '</td>' +
           '<td class="r">' + inp('mesesBloqueo', 'number', ' min="0" max="12" style="width:70px;text-align:right"') + '</td>' +
+          '<td class="r">' + inp('costo', 'number', ' min="0" step="50" style="width:84px;text-align:right"') + '</td>' +
+          '<td class="r">' + inp('deposito', 'number', ' min="0" step="50" style="width:84px;text-align:right"') + '</td>' +
           '<td class="r noprint"><button class="iconbtn" data-delarea="' + i + '" title="Quitar área">' +
           CC.ui.icono('cerrar', 'i--sm') + '</button></td></tr>';
-      }).join('') : '<tr><td colspan="7"><div class="empty"><strong>Sin áreas</strong>' +
+      }).join('') : '<tr><td colspan="9"><div class="empty"><strong>Sin áreas</strong>' +
         '<p>Agrega las canchas, el salón o el asador para apartarlos por hora desde Reservas.</p></div></td></tr>') +
       '</tbody></table></div>' +
       (ams.length ? '<div class="panelbox__body" style="border-top:1px solid var(--rule)">' +
@@ -186,13 +193,15 @@ CC.vistas.ajustes = {
         saldoInicialCaja: Number(v('cCaja')) || 0,
         avisoDiasTras: Math.max(0, Math.round(Number(v('cAvisoDias')) || 0)),
         avisoRepetirDias: Math.max(1, Math.round(Number(v('cAvisoCada')) || 7)),
-        fondoCajaChica: Math.max(0, Number(v('cFondoCaja')) || 0)
+        fondoCajaChica: Math.max(0, Number(v('cFondoCaja')) || 0),
+        mesesGratisAnualidad: Math.max(0, Math.min(6, Math.round(Number(v('cAnual')) || 0))),
+        registroVisitas: !!(raiz.querySelector('#cVisitas') || {}).checked
       });
       CC.ui.toast('Datos guardados', 'good');
     };
 
     /* Las reglas de cobro se guardan con el mismo boton */
-    ['cPresupuesto', 'cDia', 'cMora', 'cFondo', 'cCaja', 'cAvisoDias', 'cAvisoCada', 'cFondoCaja'].forEach(function (id) {
+    ['cPresupuesto', 'cDia', 'cMora', 'cFondo', 'cCaja', 'cAvisoDias', 'cAvisoCada', 'cFondoCaja', 'cAnual', 'cVisitas'].forEach(function (id) {
       var e = raiz.querySelector('#' + id);
       if (e) e.onchange = function () { raiz.querySelector('#bGuardarCond').click(); };
     });

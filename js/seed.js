@@ -247,6 +247,8 @@ CC.Seed = (function () {
     };
   }
 
+  function aHoraSeed(min) { return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0'); }
+
   /** '2026-11' -> '1 de noviembre': para que la asamblea de ejemplo siempre sea la próxima. */
   function primerDomingo(periodo) {
     var a = periodo.split('-');
@@ -311,6 +313,7 @@ CC.Seed = (function () {
       cajaChica: [],
       amenidades: (P.amenidades || []).map(function (a) { return Object.assign({}, a); }),
       reservas: [],
+      visitas: [],
       meta: {
         demo: false, folioRecibo: 0, folioPago: 0, folioCaja: 0, folioConvenio: 0,
         creado: new Date().toISOString(), actualizado: new Date().toISOString()
@@ -328,7 +331,8 @@ CC.Seed = (function () {
     /* --- Las 150 casas --- */
     var unidades = [];
     CALLES.forEach(function (calle, ci) {
-      for (var n = 1; n <= CASAS_POR_CALLE; n++) {
+      var casasCalle = Array.isArray(CASAS_POR_CALLE) ? CASAS_POR_CALLE[ci] : CASAS_POR_CALLE;
+      for (var n = 1; n <= casasCalle; n++) {
         // reparto de prototipos estable por posición
         var r = azar() * 100, acum = 0, proto = PROTOTIPOS[0];
         for (var k = 0; k < PROTOTIPOS.length; k++) {
@@ -447,6 +451,40 @@ CC.Seed = (function () {
         });
       });
     });
+
+    /* --- Pagos adelantados: casas que pagaron la anualidad en julio --- */
+    if (P.anualidad) {
+      var gratis = P.anualidad.mesesGratis || 0;
+      var vence0 = function (per) { return CC.per.vence(per, cond.diaVencimiento); };
+      unidades.forEach(function (u, i) {
+        if (u.prueba || i % (P.anualidad.cada || 11) !== 4) return;
+        if (adeudos[u.clave] || pendientesMes[u.clave]) return;
+        // fuera sus pagos de mes con mes
+        pagos = pagos.filter(function (x) { return x.unidadId !== u.id; });
+        // las cuotas que faltan para completar doce meses, con la última bonificada
+        for (var k = N_PERIODOS; k < 12; k++) {
+          var per = CC.per.suma(periodos[0], k), bon = k >= 12 - gratis;
+          cargos.push({
+            id: 'cara_' + u.id + '_' + per, unidadId: u.id, periodo: per, tipo: 'cuota',
+            concepto: 'Cuota de mantenimiento ' + CC.fmt.periodo(per) + (bon ? ' — bonificada por pago anual' : ''),
+            monto: bon ? 0 : u._cuota, fechaVence: vence0(per)
+          });
+        }
+        var fin = CC.per.suma(periodos[0], 11);
+        pagos.push({
+          id: 'pag_anual_' + u.id, unidadId: u.id, periodo: periodos[0],
+          fecha: periodos[0] + '-05', monto: u._cuota * (12 - gratis),
+          metodo: 'Transferencia', referencia: String(810000 + i),
+          nota: 'Anualidad ' + CC.fmt.periodoCorto(periodos[0]) + ' – ' + CC.fmt.periodoCorto(fin) +
+            (gratis ? ': 12 meses por el precio de ' + (12 - gratis) : '')
+        });
+        pagos.push({
+          id: 'pag_extra_' + u.id, unidadId: u.id, periodo: periodoExtra,
+          fecha: periodoExtra + '-08', monto: CUOTA_EXTRA,
+          metodo: 'Transferencia', referencia: String(820000 + i), nota: 'Cuota extraordinaria'
+        });
+      });
+    }
 
     /* --- Gastos: los servicios del condominio, mes con mes --- */
     var gastos = [];
@@ -694,6 +732,19 @@ CC.Seed = (function () {
         var finde = [0, 6].indexOf(new Date(fecha + 'T12:00:00').getDay()) >= 0;
         var horasBuenas = finde ? [7, 8, 9, 10, 11, 17, 18] : [7, 8, 19, 20, 21];
         amenidades.forEach(function (a) {
+          if (a.tipo === 'club') {
+            // eventos de fin de semana: una reunión por la tarde
+            if (!finde || azar() > (dia < 7 ? 0.7 : 0.45)) return;
+            var uc = jugadores[Math.floor(azar() * jugadores.length)];
+            var eventos = ['Cumpleaños', 'Reunión familiar', 'Bautizo', 'Junta de vecinos de la calle', 'Fiesta infantil'];
+            reservas.push({
+              id: 'res_' + (++nRes), amenidadId: a.id, unidadId: uc.id,
+              fecha: fecha, hora: azar() < 0.5 ? '14:00' : '16:00', horas: Math.min(Number(a.maxHorasDia) || 5, 5),
+              nombre: eventos[Math.floor(azar() * eventos.length)], nota: '',
+              estado: 'confirmada', registrado: new Date().toISOString()
+            });
+            return;
+          }
           horasBuenas.forEach(function (h) {
             var lleno = dia < 7 ? (finde ? 0.8 : 0.55) : 0.3;   // la semana que entra todavía tiene lugar
             if (azar() > lleno) return;
@@ -707,6 +758,63 @@ CC.Seed = (function () {
           });
         });
       }
+    }
+
+    /* --- Registro de visitas en la caseta --- */
+    var visitas = [];
+    if (P.registroVisitas) {
+      var tipos = [
+        ['Visita', 45], ['Paquetería', 20], ['Servicio doméstico', 13], ['Proveedor', 10], ['Taxi o app', 12]
+      ];
+      var letras = 'ABCDEFGHJKLMNPRSTUVWXYZ';
+      var placas = function () {
+        return 'J' + letras[Math.floor(azar() * letras.length)] + letras[Math.floor(azar() * letras.length)] + '-' +
+          (100 + Math.floor(azar() * 899)) + '-' + letras[Math.floor(azar() * letras.length)];
+      };
+      var proveedores = ['Plomería Hernández', 'Gas Express Nieto', 'Fumigaciones del Valle', 'Jardinería Los Pinos', 'Técnico de internet'];
+      var ahora = new Date(), minAhora = ahora.getHours() * 60 + ahora.getMinutes();
+      var nVis = 0;
+      for (var dv = -6; dv <= 0; dv++) {
+        var fv = CC.per.masDias(hoyISO, dv);
+        var cuantas = 14 + Math.floor(azar() * 10);
+        for (var q = 0; q < cuantas; q++) {
+          var t = azar() * 100, acu = 0, tipo = tipos[0][0];
+          for (var w = 0; w < tipos.length; w++) { acu += tipos[w][1]; if (t <= acu) { tipo = tipos[w][0]; break; } }
+          var casaV = unidades[Math.floor(azar() * unidades.length)];
+          var ent = 7 * 60 + Math.floor(azar() * 14 * 60);
+          var dur = tipo === 'Paquetería' || tipo === 'Taxi o app' ? 5 + Math.floor(azar() * 10)
+            : tipo === 'Servicio doméstico' ? 300 + Math.floor(azar() * 180) : 30 + Math.floor(azar() * 180);
+          if (dv === 0 && ent > minAhora) continue;           // todavía no llega
+          var sale = ent + dur;
+          var dentro = dv === 0 && sale > minAhora;
+          var nombreV = tipo === 'Paquetería' ? 'Repartidor de paquetería'
+            : tipo === 'Taxi o app' ? 'Conductor de app'
+            : tipo === 'Proveedor' ? proveedores[Math.floor(azar() * proveedores.length)]
+            : NOMBRES[Math.floor(azar() * NOMBRES.length)] + ' ' + APELLIDOS[Math.floor(azar() * APELLIDOS.length)];
+          visitas.push({
+            id: 'vis_' + (++nVis), fecha: fv, tipo: tipo, nombre: nombreV, unidadId: casaV.id,
+            entrada: aHoraSeed(ent), salida: dentro ? null : aHoraSeed(Math.min(sale, 23 * 60 + 50)),
+            estado: dentro ? 'dentro' : 'salio',
+            placas: tipo === 'Paquetería' || azar() < 0.35 ? '' : placas(),
+            personas: tipo === 'Visita' ? 1 + Math.floor(azar() * 3) : 1,
+            aviso: azar() < 0.4 ? 'Portal del residente' : 'Caseta', nota: ''
+          });
+        }
+      }
+      // las que la casa avisó que vienen, hoy más tarde y mañana
+      [[0, '18:30', 'Visita'], [0, '20:00', 'Visita'], [1, '09:00', 'Proveedor'], [1, '17:00', 'Visita']].forEach(function (e) {
+        var fe = CC.per.masDias(hoyISO, e[0]);
+        if (e[0] === 0 && Number(e[1].slice(0, 2)) * 60 < minAhora) return;
+        var casaE = unidades[Math.floor(azar() * unidades.length)];
+        visitas.push({
+          id: 'vis_' + (++nVis), fecha: fe, horaAprox: e[1], tipo: e[2],
+          nombre: e[2] === 'Proveedor' ? proveedores[Math.floor(azar() * proveedores.length)]
+            : NOMBRES[Math.floor(azar() * NOMBRES.length)] + ' ' + APELLIDOS[Math.floor(azar() * APELLIDOS.length)],
+          unidadId: casaE.id, entrada: null, salida: null, estado: 'esperada',
+          placas: azar() < 0.5 ? placas() : '', personas: 1 + Math.floor(azar() * 2),
+          aviso: 'Portal del residente', nota: ''
+        });
+      });
     }
 
     unidades.forEach(function (u) { delete u._cuota; });
@@ -730,6 +838,7 @@ CC.Seed = (function () {
       cajaChica: cajaChica,
       amenidades: amenidades,
       reservas: reservas,
+      visitas: visitas,
       meta: {
         demo: true, semilla: SEMILLA, folioRecibo: 2,
         folioCaja: folioCaja, folioConvenio: convenios.length,

@@ -20,9 +20,12 @@ function finDe(r) { return CC.Model.aHora(CC.Model.aMin(r.hora) + 60 * (Number(r
 
 /** Reglas del área en una línea, como las diría el reglamento. */
 function reglasDe(a) {
-  return 'De ' + (a.abre || '07:00') + ' a ' + (a.cierra || '22:00') + ' h · máximo ' + (a.maxHorasDia || 2) +
+  return a.nombre + ': de ' + (a.abre || '07:00') + ' a ' + (a.cierra || '22:00') + ' h · máximo ' + (a.maxHorasDia || 2) +
     (Number(a.maxHorasDia) === 1 ? ' hora' : ' horas') + ' al día por casa · se aparta con hasta ' +
-    (a.anticipacionDias || 7) + ' días' + (a.mesesBloqueo ? ' · no aparta quien deba ' + a.mesesBloqueo + ' meses o más' : '');
+    (a.anticipacionDias || 7) + ' días' +
+    (Number(a.costo) ? ' · renta ' + CC.fmt.money(a.costo) : '') +
+    (Number(a.deposito) ? ' + depósito ' + CC.fmt.money(a.deposito) : '') +
+    (a.mesesBloqueo ? ' · no aparta quien deba ' + a.mesesBloqueo + ' meses o más' : '');
 }
 
 /** Ventana para apartar. pre: {unidadId, amenidadId, fecha, hora, fijaCasa}. */
@@ -52,7 +55,7 @@ function formularioReserva(pre) {
     '<input class="input" id="rvFecha" type="date" min="' + esc(hoy) + '" value="' + esc(pre.fecha || hoy) + '"></label>' +
     '<label class="field"><span class="field__lab">Hora</span><select class="input" id="rvHora"></select></label>' +
     '<label class="field"><span class="field__lab">Cuánto tiempo</span>' +
-    '<select class="input" id="rvHoras"><option value="1">1 hora</option><option value="2">2 horas</option></select></label>' +
+    '<select class="input" id="rvHoras"></select></label>' +
     '<label class="field"><span class="field__lab">Quién juega (opcional)</span>' +
     '<input class="input" id="rvNombre" placeholder="Nombre de quien va a jugar"></label>' +
     '</div>' +
@@ -75,6 +78,12 @@ function formularioReserva(pre) {
             (o ? ' · ocupada' + (ou ? ' (' + ou.clave + ')' : '') : '') + '</option>';
         }).join('');
         q('rvReglas').textContent = reglasDe(a);
+        var max = Math.min(Number(a.maxHorasDia) || 2, 8), dur = Number(q('rvHoras').value) || 1;
+        var opciones = '';
+        for (var k = 1; k <= max; k++) {
+          opciones += '<option value="' + k + '"' + (k === Math.min(dur, max) ? ' selected' : '') + '>' + k + (k === 1 ? ' hora' : ' horas') + '</option>';
+        }
+        q('rvHoras').innerHTML = opciones;
       }
 
       function borrador() {
@@ -127,6 +136,9 @@ function confirmada(reservaId) {
     '<span class="listo__monto">' + esc(r.hora) + '–' + esc(finDe(r)) + '</span>' +
     '<span>' + esc(a.nombre) + ' · ' + esc(nombreDia(r.fecha, true)) + '</span>' +
     '<span class="muted">Casa ' + esc(u.clave) + (r.nombre ? ' · ' + esc(r.nombre) : '') + '</span>' +
+    (Number(a.costo) || Number(a.deposito)
+      ? '<span class="muted">Renta ' + esc(CC.fmt.money2(a.costo || 0)) + (Number(a.deposito) ? ' · depósito ' + esc(CC.fmt.money2(a.deposito)) : '') + '</span>'
+      : '') +
     '</div>' +
     '<div class="formactions" style="justify-content:center">' +
     (tel ? '<a class="btn btn--ghost" target="_blank" rel="noopener" href="https://wa.me/' + esc(tel) + '?text=' +
@@ -239,7 +251,7 @@ CC.vistas.reservas = {
             var u = CC.Store.unidad(r.unidadId) || {};
             var sigue = r.hora !== h;
             return '<td><button class="slot slot--ocupada' + (sigue ? ' slot--sigue' : '') + '" data-res="' + esc(r.id) + '">' +
-              '<b>' + esc(u.clave || '—') + '</b><small>' + esc(sigue ? 'segunda hora' : (r.nombre || u.propietario || '')) + '</small></button></td>';
+              '<b>' + esc(u.clave || '—') + '</b><small>' + esc(sigue ? 'continúa' : (r.nombre || u.propietario || '')) + '</small></button></td>';
           }
           if (pasada) return '<td><span class="slot slot--cerrada">—</span></td>';
           libres++;
@@ -256,8 +268,11 @@ CC.vistas.reservas = {
       '</tr></thead><tbody>' + filas + '</tbody></table></div></div>');
 
     /* --- Reglas, a la vista --- */
-    out.push('<div class="note"><div><strong>Reglas.</strong> ' + esc(reglasDe(ams[0])) +
-      '. Las aplica el sistema solo al apartar; se cambian en Ajustes.</div></div>');
+    var tiposVistos = {};
+    var reglas = ams.filter(function (a) { if (tiposVistos[a.tipo]) return false; tiposVistos[a.tipo] = 1; return true; })
+      .map(function (a) { return esc(reglasDe(a)); }).join('<br>');
+    out.push('<div class="note"><div><strong>Reglas que aplica el sistema al apartar</strong> (se cambian en Ajustes)<br>' +
+      reglas + '</div></div>');
 
     return out.join('');
   },

@@ -94,6 +94,7 @@ CC.Store = (function () {
     if (!Array.isArray(d.cajaChica)) d.cajaChica = [];
     if (!Array.isArray(d.amenidades)) d.amenidades = [];
     if (!Array.isArray(d.reservas)) d.reservas = [];
+    if (!Array.isArray(d.visitas)) d.visitas = [];
     if (!d.meta) d.meta = { demo: false, creado: new Date().toISOString() };
     if (typeof d.meta.folioRecibo !== 'number') d.meta.folioRecibo = d.recibos.length;
     if (typeof d.meta.folioCaja !== 'number') d.meta.folioCaja = d.cajaChica.length;
@@ -177,6 +178,7 @@ CC.Store = (function () {
       return null;
     },
     reservas: function () { return estado.reservas || []; },
+    visitas: function () { return estado.visitas || []; },
     esDemo: function () { return !!estado.meta.demo; },
 
     unidad: function (id) {
@@ -400,6 +402,24 @@ CC.Store = (function () {
       if (r) { r.estado = 'cancelada'; r.motivo = motivo || ''; r.cancelada = new Date().toISOString(); guardar(); }
       return r;
     },
+    /* --- registro de visitas en la caseta --- */
+    agregarVisita: function (v) {
+      v.id = nuevoId('vis');
+      v.registrado = new Date().toISOString();
+      estado.visitas.push(v);
+      estado.meta.demo = false;
+      guardar();
+      return v;
+    },
+    actualizarVisita: function (id, cambios) {
+      var l = estado.visitas || [];
+      for (var i = 0; i < l.length; i++) {
+        if (l[i].id === id) { Object.assign(l[i], cambios); break; }
+      }
+      estado.meta.demo = false;
+      guardar();
+    },
+
     guardarAmenidades: function (lista) {
       estado.amenidades = lista;
       estado.meta.demo = false;

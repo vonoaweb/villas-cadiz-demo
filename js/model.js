@@ -651,10 +651,80 @@ CC.Model = (function () {
       '',
       dia.charAt(0).toUpperCase() + dia.slice(1) + ' ' + CC.fmt.fechaLarga(r.fecha) + ', de ' + r.hora + ' a ' + fin + ' h.',
       'Casa ' + u.clave + '.',
+      (Number(a.costo) || Number(a.deposito))
+        ? 'Renta: ' + CC.fmt.money2(Number(a.costo) || 0) + (Number(a.deposito) ? ' · depósito en garantía: ' + CC.fmt.money2(a.deposito) + ' (se devuelve si el área queda en orden)' : '')
+        : null,
       '',
       'Si no van a poder ir, avísenos para liberarla.',
       'Gracias, ' + (c.administrador || 'la administración') + ', ' + c.nombre + '.'
-    ].join('\n');
+    ].filter(function (x) { return x !== null; }).join('\n');
+  }
+
+  /* ---------- Pagos adelantados y anualidad ---------- */
+
+  /**
+   * Hasta qué mes tiene cubiertas sus cuotas una casa, contando las que pagó
+   * por adelantado. null si debe algo o no tiene cuotas.
+   */
+  function pagadoHasta(unidadId) {
+    var ap = aplicacion(unidadId, '9999-12');
+    var ultimo = null;
+    for (var i = 0; i < ap.lineas.length; i++) {
+      var l = ap.lineas[i];
+      if (l.pendiente > 0.005) break;
+      if (l.cargo.tipo === 'cuota') ultimo = l.cargo.periodo;
+    }
+    if (!ultimo) return null;
+    // lo que sobra a favor alcanza para más meses
+    var u = CC.Store.unidad(unidadId), c = u ? cuota(u) : 0;
+    if (c > 0 && ap.aFavor >= c) ultimo = CC.per.suma(ultimo, Math.floor(ap.aFavor / c));
+    return ultimo;
+  }
+
+  /**
+   * Cuotas de los próximos n meses que la casa todavía no tiene generadas, para
+   * pagarlas por adelantado. Con la anualidad, los últimos meses van bonificados.
+   */
+  function proyectarAdelanto(unidadId, n, gratis) {
+    var u = CC.Store.unidad(unidadId);
+    if (!u) return [];
+    var cond = CC.Store.condominio();
+    var tiene = {};
+    (indice().cargos[unidadId] || []).forEach(function (c) { if (c.tipo === 'cuota') tiene[c.periodo] = 1; });
+    var p = CC.per.hoy(), lista = [];
+    while (lista.length < n) {
+      if (!tiene[p]) lista.push(p);
+      p = CC.per.suma(p, 1);
+    }
+    var monto = cuota(u);
+    return lista.map(function (per, i) {
+      var bonificada = i >= n - (gratis || 0);
+      return {
+        unidadId: u.id, periodo: per, tipo: 'cuota',
+        concepto: 'Cuota de mantenimiento ' + CC.fmt.periodo(per) + (bonificada ? ' — bonificada por pago anual' : ''),
+        monto: bonificada ? 0 : monto,
+        fechaVence: CC.per.vence(per, cond.diaVencimiento)
+      };
+    });
+  }
+
+  /* ---------- Visitas ---------- */
+
+  function visitasDel(fecha) {
+    return CC.Store.visitas().filter(function (v) { return v.fecha === fecha; })
+      .sort(function (a, b) { return (a.entrada || a.horaAprox || '99') < (b.entrada || b.horaAprox || '99') ? -1 : 1; });
+  }
+  function visitasDentro() {
+    return CC.Store.visitas().filter(function (v) { return v.estado === 'dentro'; });
+  }
+  function visitasEsperadas(desde) {
+    var hoy = desde || CC.per.hoyISO();
+    return CC.Store.visitas().filter(function (v) { return v.estado === 'esperada' && v.fecha >= hoy; })
+      .sort(function (a, b) { return (a.fecha + (a.horaAprox || '')) < (b.fecha + (b.horaAprox || '')) ? -1 : 1; });
+  }
+  function visitasDe(unidadId) {
+    return CC.Store.visitas().filter(function (v) { return v.unidadId === unidadId; })
+      .sort(function (a, b) { return (a.fecha + (a.entrada || '')) < (b.fecha + (b.entrada || '')) ? 1 : -1; });
   }
 
   /** Cuota de mantenimiento por tipo de casa, para verla de un vistazo. */
@@ -675,6 +745,12 @@ CC.Model = (function () {
 
 
   return {
+    pagadoHasta: pagadoHasta,
+    proyectarAdelanto: proyectarAdelanto,
+    visitasDel: visitasDel,
+    visitasDentro: visitasDentro,
+    visitasEsperadas: visitasEsperadas,
+    visitasDe: visitasDe,
     horasDe: horasDe,
     reservasDel: reservasDel,
     ocupada: ocupada,
