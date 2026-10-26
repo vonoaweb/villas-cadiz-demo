@@ -128,6 +128,12 @@ input[type=range]::-moz-range-thumb{
 }
 .resultado__u{display:block;color:var(--soft);font-size:14.5px;margin-top:4px}
 .resultado__ref{display:block;color:var(--vw-slate);font-size:12.5px;margin-top:10px}
+.dospagos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.dospagos__p{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.dospagos__p .lab{margin:0}
+.dospagos__p strong{font-family:var(--font-display);font-size:28px;letter-spacing:-.02em;line-height:1.1}
+.dospagos__p small{color:var(--soft);font-size:13px;line-height:1.45}
+@media (max-width:420px){.dospagos{grid-template-columns:1fr}}
 
 .bloque p{margin-top:8px;font-size:15px}
 .bloque p strong{color:#fff}
@@ -258,7 +264,7 @@ input[type=range]::-moz-range-thumb{
     <p class="lead">La administración de sus 131 casas, canchas y casa club, en línea: el comité desde su computadora y cada vecino desde su celular.</p>
     <div class="precio">
       <span class="precio__n" id="tPrecio">$23,000</span>
-      <span class="precio__u">+ IVA · precio total · de contado o hasta <span id="tMaxMeses">12</span> meses sin intereses</span>
+      <span class="precio__u">+ IVA · precio total · en dos pagos: la mitad al firmar y la mitad al entregar</span>
     </div>
     <a class="btn btn--ghost" href="https://vonoaweb.github.io/villas-cadiz-demo/" target="_blank" rel="noopener">
       Ver el sistema funcionando →
@@ -267,20 +273,15 @@ input[type=range]::-moz-range-thumb{
 
   <!-- Cotizador -->
   <section class="card" aria-labelledby="hCoti">
-    <h2 id="hCoti">Arme su plan de pagos</h2>
+    <h2 id="hCoti">Cómo se paga: en dos pagos</h2>
 
-    <div class="pregunta">
-      <label for="rMeses">¿En cuántos meses lo pagan?</label>
-      <strong id="tPlazo">12 meses</strong>
+    <div class="dospagos">
+      <div class="dospagos__p"><p class="lab">1 · Al firmar</p><strong id="tPago1">$11,500</strong>
+        <small>Anticipo: con él apartamos su lugar y empezamos.</small></div>
+      <div class="dospagos__p"><p class="lab">2 · Al entregar</p><strong id="tPago2">$11,500</strong>
+        <small>Cuando el sistema ya está en línea y el comité capacitado.</small></div>
     </div>
-    <input type="range" id="rMeses" min="1" max="12" step="1" value="12">
-    <div class="marcas"><span>De contado</span><span id="tMarcaMax">12 meses</span></div>
-
-    <output class="resultado" for="rMeses" aria-live="polite">
-      <span class="resultado__n" id="tMensual">$1,917</span>
-      <span class="resultado__u" id="tDetalle">al mes, durante 12 meses · sin intereses</span>
-      <span class="resultado__ref" id="tRef">Hoy pagan $1,500 al mes a CondoVive, sin fecha de término.</span>
-    </output>
+    <span class="resultado__ref" id="tRef">Más IVA. Sin renta: al terminar de pagar, el sistema es suyo.</span>
 
     <div class="bloque">
       <p class="lab">Mantenimiento</p>
@@ -331,9 +332,8 @@ input[type=range]::-moz-range-thumb{
       <h3>Pagos</h3>
       <dl>
         <dt>¿Cómo se paga?</dt>
-        <dd>De contado: la mitad al firmar y la otra mitad al entregar. A meses: la
-            primera mensualidad al firmar y las demás el mismo día de cada mes, sin
-            intereses. Por transferencia (SPEI) o depósito.</dd>
+        <dd>En dos pagos: la mitad al firmar y la otra mitad al entregar el sistema.
+            Por transferencia (SPEI) o depósito.</dd>
 
         <dt>¿Y si se atrasa un pago?</dt>
         <dd>Con más de 5 días hábiles de atraso se pausa el soporte hasta ponerse al
@@ -410,10 +410,9 @@ input[type=range]::-moz-range-thumb{
       <h3>Si cambian de opinión</h3>
       <dl>
         <dt>¿Y si cancelamos?</dt>
-        <dd>Lo que ya pagaron no se devuelve, ni el anticipo ni las mensualidades: con
-            eso apartamos su fecha y hacemos el trabajo. Si cancelan antes de la entrega,
-            ya no pagan nada más. Si el sistema ya se entregó, se termina de pagar en las
-            mensualidades acordadas, porque ya lo tienen.</dd>
+        <dd>El anticipo no se devuelve: con él apartamos su fecha y hacemos el trabajo.
+            Si cancelan antes de la entrega, ya no pagan nada más. Si el sistema ya se
+            entregó, se paga el segundo pago, porque ya lo tienen.</dd>
       </dl>
 
       <p class="terminos__base">
@@ -454,7 +453,7 @@ var PROPUESTA = {
   folio: 'COT-2610-VC',
   fecha: '26 de octubre de 2026',
   precio: 23000,                     // pago único del sistema
-  mesesMaximos: 12,                  // se puede pagar hasta en 12 meses, sin intereses
+  mesesMaximos: 1,                   // en dos pagos: mitad al firmar, mitad al entregar                  // se puede pagar hasta en 12 meses, sin intereses
   mantenimientoMensual: 450,         // se cobra al terminar los meses incluidos
   mesesMantenimientoIncluidos: 12,   // el primer año de mantenimiento va incluido
   competidorMensual: null,           // no sabemos cuánto pagan hoy: sin comparativo           // lo que pagan hoy a CondoVive (dato del cliente)
@@ -489,6 +488,7 @@ var PROPUESTA = {
 
   function pintar() {
     var r = $('rMeses');
+    if (r) {
     r.style.setProperty('--p', ((meses - 1) / (P.mesesMaximos - 1) * 100) + '%');
     r.setAttribute('aria-valuetext', plazoTexto(meses));
     $('tPlazo').textContent = plazoTexto(meses);
@@ -499,6 +499,7 @@ var PROPUESTA = {
     } else {
       $('tMensual').textContent = dinero(P.precio / meses);
       $('tDetalle').textContent = 'al mes, durante ' + meses + ' meses · sin intereses';
+    }
     }
 
     /* Comparativo al plazo elegido (solo si sabemos cuánto pagan hoy) */
@@ -522,8 +523,8 @@ var PROPUESTA = {
 
     /* El WhatsApp ya lleva el plan que eligieron */
     var msg = 'Hola, vimos la propuesta del sistema de administración del condominio (' +
-      P.folio + '). Nos interesa pagarlo ' +
-      (meses === 1 ? 'de contado' : 'en ' + meses + ' meses') + '.';
+      P.folio + '). ' + (!$('rMeses') ? 'Nos interesa contratarlo.'
+        : 'Nos interesa pagarlo ' + (meses === 1 ? 'de contado' : 'en ' + meses + ' meses') + '.');
     $('aWhats').href = 'https://wa.me/' + P.whatsapp + '?text=' + encodeURIComponent(msg);
   }
 
@@ -531,13 +532,16 @@ var PROPUESTA = {
   $('tCliente').textContent = 'Propuesta para el ' + P.cliente;
   $('tFolio').textContent = P.folio;
   $('tPrecio').textContent = dinero(P.precio);
-  $('tMaxMeses').textContent = P.mesesMaximos;
-  $('tMarcaMax').textContent = P.mesesMaximos + ' meses';
-  $('rMeses').max = P.mesesMaximos;
-  $('rMeses').value = meses;
-  $('tRef').textContent = P.competidorMensual
-    ? 'Hoy pagan ' + dinero(P.competidorMensual) + ' al mes a CondoVive, sin fecha de término.'
-    : 'Sin renta: al terminar de pagar, el sistema es suyo.';
+  if ($('rMeses')) {
+    $('tMaxMeses').textContent = P.mesesMaximos;
+    $('tMarcaMax').textContent = P.mesesMaximos + ' meses';
+    $('rMeses').max = P.mesesMaximos;
+    $('rMeses').value = meses;
+  }
+  if ($('tPago1')) {
+    $('tPago1').textContent = dinero(P.precio / 2);
+    $('tPago2').textContent = dinero(P.precio - P.precio / 2);
+  }
 
   var incl = P.mesesMantenimientoIncluidos;
   $('tMant').innerHTML = incl === 0
@@ -568,7 +572,7 @@ var PROPUESTA = {
   });
   window.addEventListener('afterprint', function () { $('dTerminos').open = estabaAbierto; });
 
-  $('rMeses').addEventListener('input', function (e) {
+  if ($('rMeses')) $('rMeses').addEventListener('input', function (e) {
     meses = Number(e.target.value);
     pintar();
   });
