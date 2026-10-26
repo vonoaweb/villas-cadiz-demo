@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Propuesta para Villas Cádiz — Vonoa Web</title>
+<meta name="description" content="Propuesta de Vonoa Web para Villas Cádiz: administración del condominio y reservas de las canchas de tenis.">
+<meta name="theme-color" content="#070F21">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Sistema de marca de Vonoa Web (tomado de vonoaweb-landing/styles.css) */
+:root{
+  --vw-deep-space:#070F21;
+  --vw-cyan:#2EE9B9;
+  --vw-blue:#1CA0F4;
+  --vw-slate:#94A3B8;
+  --vw-ink:#E6EDF9;
+  --vw-gradient:linear-gradient(135deg,#2EE9B9 0%,#1CA0F4 100%);
+  --surface:#0C1730;
+  --surface-2:#10233E;
+  --line:rgba(148,163,184,.18);
+  --line-strong:rgba(148,163,184,.34);
+  --soft:#B6C2D8;
+  --font-display:'Sora',system-ui,-apple-system,sans-serif;
+  --font-body:'DM Sans',system-ui,-apple-system,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0;background:var(--vw-deep-space);color:var(--vw-ink);
+  font-family:var(--font-body);font-size:15px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2{font-family:var(--font-display);font-weight:700;letter-spacing:-.015em;margin:0;text-wrap:balance}
+p{margin:0}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--vw-cyan);outline-offset:3px;border-radius:6px}
+
+.wrap{width:min(620px,100%);margin:0 auto;padding-inline:18px}
+
+/* ---------- Barra ---------- */
+.bar{
+  position:sticky;top:0;z-index:10;
+  background:rgba(7,15,33,.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);
+  padding-top:env(safe-area-inset-top,0px);
+}
+.bar .wrap{display:flex;align-items:center;gap:12px;height:58px}
+.brand{display:flex;align-items:center;gap:9px;flex:1 1 auto}
+.wm{font-family:var(--font-display);font-weight:700;font-size:16px;letter-spacing:.02em}
+.wm em{font-style:normal;color:var(--vw-cyan);font-size:9px;letter-spacing:.3em;margin-left:4px}
+.folio{font-size:11px;letter-spacing:.08em;color:var(--vw-slate)}
+
+/* ---------- Portada ---------- */
+.hero{padding:34px 0 26px}
+.eyebrow{
+  font-family:var(--font-display);font-size:11px;font-weight:600;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--vw-cyan);
+}
+.hero h1{font-size:clamp(28px,7.4vw,40px);line-height:1.1;margin-top:12px}
+.grad{background:var(--vw-gradient);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{margin-top:10px;color:var(--soft);font-size:16px}
+.precio{margin-top:20px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.precio__n{
+  font-family:var(--font-display);font-weight:700;letter-spacing:-.03em;
+  font-size:clamp(44px,12vw,58px);line-height:1;
+}
+.precio__u{color:var(--vw-slate);font-size:13.5px}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;padding:0 22px;border-radius:999px;border:0;cursor:pointer;
+  font-family:var(--font-display);font-weight:600;font-size:14.5px;
+  background:var(--vw-gradient);color:#07102a;
+  transition:transform .15s ease,filter .15s ease;
+}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.06)}
+.btn--ghost{background:transparent;color:var(--vw-ink);border:1px solid var(--line-strong)}
+.btn--ghost:hover{border-color:var(--vw-cyan);color:var(--vw-cyan)}
+.hero .btn{margin-top:20px}
+
+/* ---------- Tarjetas ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:22px 20px}
+.card+.card{margin-top:14px}
+.card h2{font-size:19px}
+.lab{
+  font-family:var(--font-display);font-size:11px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--vw-cyan);
+}
+.bloque{margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+
+/* ---------- Cotizador ---------- */
+.pregunta{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:16px}
+.pregunta label{font-weight:600;color:#fff}
+.pregunta strong{font-family:var(--font-display);color:var(--vw-cyan);white-space:nowrap}
+
+input[type=range]{
+  --p:100%;
+  -webkit-appearance:none;appearance:none;
+  width:100%;height:40px;margin:6px 0 0;background:transparent;cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{
+  height:10px;border-radius:999px;
+  background:var(--vw-gradient) 0/var(--p) 100% no-repeat, rgba(148,163,184,.22);
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:30px;height:30px;margin-top:-10px;border-radius:50%;
+  background:#fff;border:4px solid var(--vw-blue);
+  box-shadow:0 4px 14px rgba(0,0,0,.45);
+}
+input[type=range]::-moz-range-track{height:10px;border-radius:999px;background:rgba(148,163,184,.22)}
+input[type=range]::-moz-range-progress{height:10px;border-radius:999px;background:var(--vw-gradient)}
+input[type=range]::-moz-range-thumb{
+  width:22px;height:22px;border-radius:50%;
+  background:#fff;border:4px solid var(--vw-blue);box-shadow:0 4px 14px rgba(0,0,0,.45);
+}
+.marcas{display:flex;justify-content:space-between;font-size:12px;color:var(--vw-slate)}
+
+.resultado{
+  display:block;margin-top:16px;padding:18px 16px;border-radius:16px;
+  background:var(--surface-2);text-align:center;
+}
+.resultado__n{
+  display:block;font-family:var(--font-display);font-weight:700;
+  font-size:clamp(36px,10vw,46px);letter-spacing:-.025em;line-height:1.1;
+}
+.resultado__u{display:block;color:var(--soft);font-size:14.5px;margin-top:4px}
+.resultado__ref{display:block;color:var(--vw-slate);font-size:12.5px;margin-top:10px}
+
+.bloque p{margin-top:8px;font-size:15px}
+.bloque p strong{color:#fff}
+.chips{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0;padding:0}
+.chips li{font-size:12.5px;padding:5px 11px;border-radius:999px;border:1px solid var(--line-strong);color:#C3CEE0}
+
+.comp__head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
+.seg{display:inline-flex;padding:3px;border-radius:999px;border:1px solid var(--line-strong);background:var(--vw-deep-space)}
+.seg button{
+  border:0;background:transparent;cursor:pointer;color:var(--soft);
+  font:600 12.5px var(--font-display);padding:7px 13px;border-radius:999px;
+}
+.seg button.is-on{background:var(--vw-gradient);color:#07102a}
+
+.barra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;margin-top:14px}
+.barra__lab{font-size:13.5px;color:#C3CEE0}
+.barra__val{font-family:var(--font-display);font-weight:600;font-size:15px;font-variant-numeric:tabular-nums}
+.barra__track{grid-column:1/-1;height:14px;border-radius:999px;background:rgba(148,163,184,.12);overflow:hidden}
+.barra__fill{display:block;height:100%;width:0;border-radius:999px;background:var(--vw-gradient);transition:width .4s ease}
+.barra__fill--otro{background:rgba(148,163,184,.5)}
+.ahorro{margin-top:16px;font-size:15px}
+.ahorro strong{color:var(--vw-cyan)}
+
+/* ---------- Incluye ---------- */
+.lista{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:11px}
+.lista li{
+  position:relative;display:grid;grid-template-columns:20px minmax(0,1fr);gap:11px;
+  font-size:15px;color:#C3CEE0;
+}
+.lista li::before{
+  content:"";width:18px;height:18px;margin-top:3px;border-radius:50%;
+  background:var(--vw-gradient);
+}
+.lista li::after{
+  content:"";position:absolute;left:5px;top:8px;width:8px;height:4px;
+  border-left:2px solid #07102a;border-bottom:2px solid #07102a;transform:rotate(-45deg);
+}
+
+/* ---------- Términos ---------- */
+.claves{list-style:none;margin:14px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.claves li{padding:13px 15px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line)}
+.claves strong{display:block;font-family:var(--font-display);font-size:14.5px;line-height:1.35;color:#fff}
+.claves li > span{display:block;margin-top:3px;font-size:13px;color:var(--soft)}
+
+.terminos{margin-top:16px;border-top:1px solid var(--line)}
+.terminos summary{
+  list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;
+  padding:16px 2px 2px;font-family:var(--font-display);font-weight:600;font-size:15px;color:var(--vw-cyan);
+}
+.terminos summary::-webkit-details-marker{display:none}
+.terminos summary .sum{flex:1 1 auto;display:flex;flex-direction:column;gap:1px}
+.terminos summary small{font-family:var(--font-body);font-weight:400;font-size:12.5px;color:var(--vw-slate)}
+.terminos summary::after{
+  content:"";flex:none;width:8px;height:8px;margin:0 4px 3px 2px;
+  border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:rotate(45deg);transition:transform .2s ease;
+}
+.terminos[open] summary::after{transform:rotate(-135deg);margin-bottom:-3px}
+.terminos h3{
+  margin:22px 0 2px;font-family:var(--font-display);font-size:11px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--vw-cyan);
+}
+.terminos dl{margin:0}
+.terminos dt{margin-top:12px;font-weight:600;font-size:14.5px;color:#fff}
+.terminos dd{margin:3px 0 0;font-size:14px;line-height:1.6;color:var(--soft)}
+.terminos__base{margin-top:22px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--vw-slate)}
+.terminos__base a{color:var(--vw-blue);text-decoration:underline;text-underline-offset:2px}
+
+/* ---------- Cierre ---------- */
+.cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.cta .btn{flex:1 1 210px}
+.letra{margin-top:16px;font-size:12px;color:var(--vw-slate);line-height:1.6}
+.pie{
+  margin-top:30px;padding:22px 0 calc(28px + env(safe-area-inset-bottom,0px));
+  border-top:1px solid var(--line);font-size:12.5px;color:var(--vw-slate);
+}
+.pie a{color:var(--vw-blue)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- Guardar como PDF ---------- */
+@media print{
+  body{background:#fff;color:#111}
+  .bar,.btn,.cta{display:none!important}
+  .card{background:#fff;border:1px solid #bbb}
+  .resultado{background:#f1f5f9}
+  .grad{color:#02215D;-webkit-text-fill-color:#02215D}
+  .eyebrow,.lab{color:#0A6E5A}
+  h1,h2,.precio__n,.resultado__n,.barra__val,.bloque p strong{color:#111}
+  .lead,.resultado__u,.barra__lab,.lista li,.chips li,.ahorro{color:#333}
+  .barra__track{background:#e5e7eb}
+  .barra__fill,.barra__fill--otro,input[type=range]{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .claves li{background:#fff;border:1px solid #bbb}
+  .claves strong,.terminos dt{color:#111}
+  .claves span,.terminos dd,.terminos__base{color:#333}
+  .terminos h3,.terminos summary{color:#0A6E5A}
+  .terminos summary small,.terminos summary::after{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="https://vonoaweb.com" target="_blank" rel="noopener">
+      <svg viewBox="0 0 210 210" width="24" height="24" aria-hidden="true">
+        <defs>
+          <linearGradient id="lg-brand" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#2EE9B9"/>
+            <stop offset="1" stop-color="#1CA0F4"/>
+          </linearGradient>
+        </defs>
+        <path fill="url(#lg-brand)" fill-rule="evenodd"
+          d="M 0 18 L 39 91 L 49 72 L 9 0 L 0 18 Z M 161 72 L 171 91 L 210 18 L 201 0 L 161 72 Z M 63 77 L 72 84 C 89 68 121 68 140 84 L 147 77 C 135 65 121 61 105 61 C 89 61 75 65 63 77 Z M 105 173 L 65 100 L 56 119 L 105 210 L 154 119 L 145 100 L 105 173 Z"/>
+      </svg>
+      <span class="wm">VONOA<em>WEB</em></span>
+    </a>
+    <span class="folio" id="tFolio">COT-2610-VC</span>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- Portada: el precio, a la vista -->
+  <section class="hero">
+    <p class="eyebrow" id="tCliente">Propuesta para el Comité de Administración</p>
+    <h1>Se compra una vez. El sistema <span class="grad">es suyo.</span></h1>
+    <p class="lead">La administración de Villas Cádiz, con las reservas de sus canchas de tenis, instalada en su computadora.</p>
+    <div class="precio">
+      <span class="precio__n" id="tPrecio">$23,000</span>
+      <span class="precio__u">+ IVA · precio total · de contado o hasta <span id="tMaxMeses">12</span> meses sin intereses</span>
+    </div>
+    <a class="btn btn--ghost" href="https://vonoaweb.github.io/villas-cadiz-demo/" target="_blank" rel="noopener">
+      Ver el sistema funcionando →
+    </a>
+  </section>
+
+  <!-- Cotizador -->
+  <section class="card" aria-labelledby="hCoti">
+    <h2 id="hCoti">Arme su plan de pagos</h2>
+
+    <div class="pregunta">
+      <label for="rMeses">¿En cuántos meses lo pagan?</label>
+      <strong id="tPlazo">12 meses</strong>
+    </div>
+    <input type="range" id="rMeses" min="1" max="12" step="1" value="12">
+    <div class="marcas"><span>De contado</span><span id="tMarcaMax">12 meses</span></div>
+
+    <output class="resultado" for="rMeses" aria-live="polite">
+      <span class="resultado__n" id="tMensual">$1,917</span>
+      <span class="resultado__u" id="tDetalle">al mes, durante 12 meses · sin intereses</span>
+      <span class="resultado__ref" id="tRef">Hoy pagan $1,500 al mes a CondoVive, sin fecha de término.</span>
+    </output>
+
+    <div class="bloque">
+      <p class="lab">Mantenimiento</p>
+      <p id="tMant"><strong>El primer año va incluido.</strong> Después, <strong>$450 al mes</strong>.</p>
+      <ul class="chips">
+        <li>Actualizaciones</li>
+        <li>Corrección de fallas</li>
+        <li>Soporte por WhatsApp</li>
+        <li>Ajustes menores</li>
+      </ul>
+    </div>
+
+  </section>
+
+  <!-- Incluye -->
+  <section class="card" aria-labelledby="hIncluye">
+    <h2 id="hIncluye">Incluye</h2>
+    <ul class="lista">
+      <li><strong>Reservas de las canchas de tenis</strong> con las reglas de su reglamento: horario, horas por casa y sin reservas para quien deba tres meses o más</li>
+      <li>Todo lo que vieron en el sistema, con sus casas y su reglamento ya capturados: avisos de adeudo por WhatsApp y correo, pagos en parcialidades, recibo de cada pago y caja chica</li>
+      <li>Instalación en la computadora de la administración</li>
+      <li>Capacitación al comité</li>
+      <li>Listo en <span data-t="semanasEntrega">3</span> semanas, con <span data-t="garantiaDias">30</span> días de garantía</li>
+    </ul>
+  </section>
+
+  <!-- Términos: lo clave a la vista, el detalle a un toque.
+       Cada respuesta traduce una cláusula de vonoaweb.com/terminos-condiciones.html;
+       lo único que esta propuesta cambia son las mensualidades (su cláusula 3
+       permite que la propuesta particular prevalezca). -->
+  <section class="card" aria-labelledby="hTerm">
+    <h2 id="hTerm">Términos y condiciones</h2>
+
+    <ul class="claves">
+      <li><strong>Es suyo al terminar de pagar</strong><span>Sin renta, para siempre.</span></li>
+      <li><strong><span data-t="garantiaDias">30</span> días de garantía</strong><span>Cualquier falla del sistema se corrige sin costo.</span></li>
+      <li><strong>El mantenimiento lo dejan cuando quieran</strong><span>El sistema sigue funcionando.</span></li>
+      <li><strong>Su información vive en su computadora</strong><span>No nos quedamos con copia.</span></li>
+    </ul>
+
+    <details class="terminos" id="dTerminos">
+      <summary><span class="sum">Ver todos los términos <small id="tNumPreguntas">15 preguntas · 2 minutos</small></span></summary>
+
+      <h3>Pagos</h3>
+      <dl>
+        <dt>¿Cómo se paga?</dt>
+        <dd>De contado: la mitad al firmar y la otra mitad al entregar. A meses: la
+            primera mensualidad al firmar y las demás el mismo día de cada mes, sin
+            intereses. Por transferencia (SPEI) o depósito.</dd>
+
+        <dt>¿Y si se atrasa un pago?</dt>
+        <dd>Con más de 5 días hábiles de atraso se pausa el soporte hasta ponerse al
+            corriente. El sistema sigue funcionando.</dd>
+
+        <dt>¿Nos dan factura?</dt>
+        <dd>Sí, por cada pago. Pídanla al pagar, con su RFC, razón social, régimen
+            fiscal y correo.</dd>
+      </dl>
+
+      <h3>Lo que reciben</h3>
+      <dl>
+        <dt>¿Desde cuándo es nuestro el sistema?</dt>
+        <dd>Desde el último pago, su copia es suya para siempre y la usan sin pagar
+            renta. La información es 100% del condominio. El programa sigue siendo de
+            Vonoa Web, que puede ofrecerlo a otros condominios, pero nunca con su
+            información.</dd>
+
+        <dt>¿Cuánto tarda?</dt>
+        <dd><span data-t="semanasEntrega">3</span> semanas, contadas desde el primer pago
+            y desde que nos entregan su información: padrón, saldos y reglamento. Si la
+            información se retrasa, la fecha se recorre lo mismo.</dd>
+
+        <dt>¿Qué cubre la garantía?</dt>
+        <dd>Durante <span data-t="garantiaDias">30</span> días naturales después de la
+            entrega corregimos sin costo cualquier falla del sistema. No cubre fallas de
+            la computadora, virus ni cambios hechos por otras personas.</dd>
+
+        <dt>¿Y si queremos cambios o algo nuevo?</dt>
+        <dd>Incluye <span data-t="rondasAjustes">2</span> rondas de ajustes sobre lo
+            entregado. Lo que sea nuevo se cotiza antes, y solo se hace si lo aprueban.</dd>
+
+        <dt>¿Qué no incluye?</dt>
+        <dd>Facturar las cuotas de los vecinos ante el SAT, app en tiendas, ni la
+            computadora.</dd>
+      </dl>
+
+      <h3>Mantenimiento</h3>
+      <dl>
+        <dt>¿Qué incluye el mantenimiento?</dt>
+        <dd>Actualizaciones, corrección de fallas, ajustes menores y soporte por
+            WhatsApp de lunes a viernes, de 9 a 18 h. <span id="tMantTerm">El primer
+            año va incluido; después son $450 al mes, pagados por adelantado.</span></dd>
+
+        <dt>¿Lo podemos dejar?</dt>
+        <dd>Sí, cuando quieran, avisando con 15 días. El sistema sigue funcionando; solo
+            dejan de recibir soporte y actualizaciones. Si algún día cambia el precio,
+            se avisa con 30 días.</dd>
+      </dl>
+
+      <h3>Su información</h3>
+      <dl>
+        <dt>¿Quién ve nuestra información?</dt>
+        <dd>Vive en su computadora. La usamos solo para cargar el sistema y para darles
+            soporte cuando nos la compartan, y al entregar borramos nuestras copias.
+            Nunca la mostramos a nadie. Si prefieren que no digamos que trabajamos con
+            ustedes, avísennos antes de empezar.</dd>
+
+        <dt>¿Y si se descompone la computadora?</dt>
+        <dd>La información está solo ahí y nosotros no guardamos copia. Por eso el
+            sistema tiene un botón para guardarla: háganlo cada semana en una memoria
+            USB. Sin esa copia, la información se pierde con el equipo.</dd>
+
+        <dt>¿Lo podemos usar en varias computadoras?</dt>
+        <dd>Se instala en una. Si lo usan en dos, cada una tendría datos distintos.
+            Para cambiar de computadora, se pasa todo con el archivo de respaldo.</dd>
+
+        <dt>¿Y si Vonoa Web deja de existir?</dt>
+        <dd>El sistema sigue funcionando en su computadora. No depende de nosotros.</dd>
+      </dl>
+
+      <h3>Si cambian de opinión</h3>
+      <dl>
+        <dt>¿Y si cancelamos?</dt>
+        <dd>Lo que ya pagaron no se devuelve, ni el anticipo ni las mensualidades: con
+            eso apartamos su fecha y hacemos el trabajo. Si cancelan antes de la entrega,
+            ya no pagan nada más. Si el sistema ya se entregó, se termina de pagar en las
+            mensualidades acordadas, porque ya lo tienen.</dd>
+      </dl>
+
+      <p class="terminos__base">
+        Lo que no diga aquí se rige por nuestros
+        <a href="https://vonoaweb.com/terminos-condiciones.html" target="_blank" rel="noopener">Términos y Condiciones</a>
+        y nuestro
+        <a href="https://vonoaweb.com/aviso-privacidad.html" target="_blank" rel="noopener">Aviso de Privacidad</a>.
+        Donde esta propuesta diga algo distinto, manda la propuesta. Se acepta
+        firmándola o haciendo el primer pago.
+      </p>
+    </details>
+  </section>
+
+  <div class="cta">
+    <a class="btn" id="aWhats" target="_blank" rel="noopener"
+       href="https://wa.me/5215644645574">Lo queremos · WhatsApp</a>
+    <a class="btn btn--ghost" id="bPdf" href="cotizacion-villas-cadiz-vonoa.pdf" download="Cotizacion Villas Cadiz - Vonoa Web.pdf">Descargar PDF</a>
+  </div>
+
+  <p class="letra" id="tLetra">
+    Precios en pesos mexicanos, más IVA. Propuesta del 26 de octubre de 2026,
+    vigente 30 días.
+  </p>
+
+  <footer class="pie">
+    <strong style="color:var(--vw-ink)">Vonoa Web</strong> · Guadalajara, Jalisco<br>
+    <a href="mailto:hola@vonoaweb.com">hola@vonoaweb.com</a> ·
+    <a href="https://wa.me/5215644645574" target="_blank" rel="noopener">WhatsApp</a> ·
+    <a href="https://vonoaweb.com" target="_blank" rel="noopener">vonoaweb.com</a>
+  </footer>
+
+</main>
+
+<script>
+/* Todo lo que se negocia vive aquí. Cambiar un número actualiza la página entera. */
+var PROPUESTA = {
+  cliente: 'Comité de Administración de Villas Cádiz',
+  folio: 'COT-2610-VC',
+  fecha: '26 de octubre de 2026',
+  precio: 23000,                     // pago único del sistema
+  mesesMaximos: 12,                  // se puede pagar hasta en 12 meses, sin intereses
+  mantenimientoMensual: 450,         // se cobra al terminar los meses incluidos
+  mesesMantenimientoIncluidos: 12,   // el primer año de mantenimiento va incluido
+  competidorMensual: null,           // no sabemos cuánto pagan hoy: sin comparativo           // lo que pagan hoy a CondoVive (dato del cliente)
+  semanasEntrega: 3,
+  garantiaDias: 30,                  // igual que la cláusula 9.1 de los términos generales
+  rondasAjustes: 2,
+  whatsapp: '5215644645574'
+};
+
+(function () {
+  var P = PROPUESTA;
+  var fmt = new Intl.NumberFormat('es-MX', {
+    style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0
+  });
+  function $(id) { return document.getElementById(id); }
+  function dinero(n) { return fmt.format(Math.round(n)); }
+
+  var meses = P.mesesMaximos;
+  var anios = 3;
+
+  /* Costo acumulado de cada camino a los m meses */
+  function costoPropio(m) {
+    return P.precio + P.mantenimientoMensual * Math.max(0, m - P.mesesMantenimientoIncluidos);
+  }
+  function costoOtro(m) { return P.competidorMensual * m; }
+  function mesCruce() {
+    for (var m = 1; m <= 240; m++) if (costoOtro(m) > costoPropio(m)) return m;
+    return null;
+  }
+
+  function plazoTexto(n) { return n === 1 ? 'De contado' : n + ' meses'; }
+
+  function pintar() {
+    var r = $('rMeses');
+    r.style.setProperty('--p', ((meses - 1) / (P.mesesMaximos - 1) * 100) + '%');
+    r.setAttribute('aria-valuetext', plazoTexto(meses));
+    $('tPlazo').textContent = plazoTexto(meses);
+
+    if (meses === 1) {
+      $('tMensual').textContent = dinero(P.precio);
+      $('tDetalle').textContent = 'de contado: la mitad al firmar y la mitad al entregar';
+    } else {
+      $('tMensual').textContent = dinero(P.precio / meses);
+      $('tDetalle').textContent = 'al mes, durante ' + meses + ' meses · sin intereses';
+    }
+
+    /* Comparativo al plazo elegido (solo si sabemos cuánto pagan hoy) */
+    if (P.competidorMensual && $('vOtro')) {
+    var m = anios * 12;
+    var otro = costoOtro(m), propio = costoPropio(m);
+    var tope = Math.max(otro, propio) || 1;
+    $('vOtro').textContent = dinero(otro);
+    $('vPropio').textContent = dinero(propio);
+    $('bOtro').style.width = (otro / tope * 100).toFixed(1) + '%';
+    $('bPropio').style.width = (propio / tope * 100).toFixed(1) + '%';
+
+    var dif = otro - propio;
+    var cruce = mesCruce();
+    var desde = cruce ? ' Desde el mes ' + cruce + ' ya les sale más barato.' : '';
+    var plazo = anios === 1 ? 'El primer año' : 'A ' + anios + ' años';
+    $('tAhorro').innerHTML = dif > 0
+      ? 'Se ahorran <strong>' + dinero(dif) + '</strong>.' + desde
+      : plazo + ' su sistema cuesta <strong>' + dinero(-dif) + '</strong> más.' + desde;
+    }
+
+    /* El WhatsApp ya lleva el plan que eligieron */
+    var msg = 'Hola, vimos la propuesta del sistema de administración del condominio (' +
+      P.folio + '). Nos interesa pagarlo ' +
+      (meses === 1 ? 'de contado' : 'en ' + meses + ' meses') + '.';
+    $('aWhats').href = 'https://wa.me/' + P.whatsapp + '?text=' + encodeURIComponent(msg);
+  }
+
+  /* Textos fijos que salen de PROPUESTA */
+  $('tCliente').textContent = 'Propuesta para el ' + P.cliente;
+  $('tFolio').textContent = P.folio;
+  $('tPrecio').textContent = dinero(P.precio);
+  $('tMaxMeses').textContent = P.mesesMaximos;
+  $('tMarcaMax').textContent = P.mesesMaximos + ' meses';
+  $('rMeses').max = P.mesesMaximos;
+  $('rMeses').value = meses;
+  $('tRef').textContent = P.competidorMensual
+    ? 'Hoy pagan ' + dinero(P.competidorMensual) + ' al mes a CondoVive, sin fecha de término.'
+    : 'Sin renta: al terminar de pagar, el sistema es suyo.';
+
+  var incl = P.mesesMantenimientoIncluidos;
+  $('tMant').innerHTML = incl === 0
+    ? '<strong>' + dinero(P.mantenimientoMensual) + ' al mes</strong> desde la entrega.'
+    : '<strong>' + (incl === 12 ? 'El primer año va incluido.' : 'Los primeros ' + incl + ' meses van incluidos.') +
+      '</strong> Después, <strong>' + dinero(P.mantenimientoMensual) + ' al mes</strong>.';
+
+  $('tLetra').textContent = 'Precios en pesos mexicanos, más IVA. Propuesta del ' +
+    P.fecha + ', vigente 30 días.';
+
+  /* Números de los términos que dependen del trato */
+  document.querySelectorAll('[data-t]').forEach(function (n) {
+    var v = P[n.getAttribute('data-t')];
+    if (v !== undefined) n.textContent = v;
+  });
+  $('tMantTerm').textContent = incl === 0
+    ? 'Cuesta ' + dinero(P.mantenimientoMensual) + ' al mes desde la entrega, pagados por adelantado.'
+    : (incl === 12 ? 'El primer año va incluido' : 'Los primeros ' + incl + ' meses van incluidos') +
+      '; después son ' + dinero(P.mantenimientoMensual) + ' al mes, pagados por adelantado.';
+  var preguntas = document.querySelectorAll('#dTerminos dt').length;
+  $('tNumPreguntas').textContent = preguntas + ' preguntas · 2 minutos';
+
+  /* Al imprimir o guardar PDF, los términos salen completos aunque estén plegados */
+  var estabaAbierto = false;
+  window.addEventListener('beforeprint', function () {
+    estabaAbierto = $('dTerminos').open;
+    $('dTerminos').open = true;
+  });
+  window.addEventListener('afterprint', function () { $('dTerminos').open = estabaAbierto; });
+
+  $('rMeses').addEventListener('input', function (e) {
+    meses = Number(e.target.value);
+    pintar();
+  });
+
+  document.querySelectorAll('[data-anios]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      anios = Number(b.getAttribute('data-anios'));
+      document.querySelectorAll('[data-anios]').forEach(function (x) {
+        x.classList.toggle('is-on', x === b);
+        x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+      });
+      pintar();
+    });
+  });
+
+  /* "Descargar PDF" baja la versión de dos hojas (pdf.html impresa); ya no imprime esta página. */
+
+  pintar();
+})();
+</script>
+</body>
+</html>

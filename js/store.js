@@ -1,0 +1,512 @@
+/* store.js — persistencia y estado.
+ *
+ * El resto de la aplicación nunca toca localStorage directamente: habla con
+ * CC.Store. Eso deja un solo punto de cambio para conectar un backend real
+ * (ver driver.remoto más abajo y el README): basta con implementar leer() y
+ * escribir() contra una API y registrarlo con CC.Store.usarDriver().
+ */
+window.CC = window.CC || {};
+
+CC.Store = (function () {
+  var LLAVE = 'cuotaclara.v1';
+  var estado = null;
+  var oyentes = [];
+  var driver = null;
+
+  /* ---- Driver local: el navegador de quien usa la aplicación ---- */
+  var driverLocal = {
+    nombre: 'local',
+    disponible: function () {
+      try {
+        var k = '__cc_probe__';
+        window.localStorage.setItem(k, '1');
+        window.localStorage.removeItem(k);
+        return true;
+      } catch (e) { return false; }
+    },
+    leer: function () {
+      try {
+        var crudo = window.localStorage.getItem(LLAVE);
+        return crudo ? JSON.parse(crudo) : null;
+      } catch (e) { return null; }
+    },
+    escribir: function (datos) {
+      try {
+        window.localStorage.setItem(LLAVE, JSON.stringify(datos));
+        return true;
+      } catch (e) { return false; }
+    },
+    borrar: function () {
+      try { window.localStorage.removeItem(LLAVE); return true; }
+      catch (e) { return false; }
+    }
+  };
+
+  /* ---- Driver en memoria: cuando el navegador bloquea el almacenamiento
+         (ventana privada, cookies restringidas). La aplicacion sigue
+         funcionando; los cambios se pierden al cerrar. ---- */
+  var driverMemoria = (function () {
+    var caja = null;
+    return {
+      nombre: 'memoria',
+      disponible: function () { return true; },
+      leer: function () { return caja; },
+      escribir: function (datos) { caja = JSON.parse(JSON.stringify(datos)); return true; },
+      borrar: function () { caja = null; return true; }
+    };
+  })();
+
+  function elegirDriver() {
+    return driverLocal.disponible() ? driverLocal : driverMemoria;
+  }
+
+  function nuevoId(prefijo) {
+    return prefijo + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  function emitir() {
+    for (var i = 0; i < oyentes.length; i++) {
+      try { oyentes[i](estado); } catch (e) { /* un oyente roto no tumba a los demas */ }
+    }
+  }
+
+  function guardar() {
+    estado.meta.actualizado = new Date().toISOString();
+    driver.escribir(estado);
+    emitir();
+  }
+
+  /**
+   * Completa lo que falte en un documento guardado por una version anterior.
+   * Sin esto, a quien ya tenia datos le explotarian las secciones nuevas.
+   */
+  function migrar(d) {
+    if (!d || typeof d !== 'object') return d;
+    if (!Array.isArray(d.recibos)) d.recibos = [];
+    if (!Array.isArray(d.notas)) d.notas = [];
+    if (!Array.isArray(d.difusiones)) d.difusiones = [];
+    if (!Array.isArray(d.documentos)) d.documentos = [];
+    if (!d.reglamento || !Array.isArray(d.reglamento.capitulos)) {
+      d.reglamento = { titulo: 'Reglamento Interno', aprobado: '', nota: '', capitulos: [] };
+    }
+    if (!Array.isArray(d.convenios)) d.convenios = [];
+    if (!Array.isArray(d.avisosAdeudo)) d.avisosAdeudo = [];
+    if (!Array.isArray(d.cajaChica)) d.cajaChica = [];
+    if (!Array.isArray(d.amenidades)) d.amenidades = [];
+    if (!Array.isArray(d.reservas)) d.reservas = [];
+    if (!d.meta) d.meta = { demo: false, creado: new Date().toISOString() };
+    if (typeof d.meta.folioRecibo !== 'number') d.meta.folioRecibo = d.recibos.length;
+    if (typeof d.meta.folioCaja !== 'number') d.meta.folioCaja = d.cajaChica.length;
+    if (typeof d.meta.folioConvenio !== 'number') d.meta.folioConvenio = d.convenios.length;
+
+    // Cada pago lleva folio para su recibo. A los pagos de antes se les pone
+    // en orden de fecha, para que el folio siga la cronología.
+    if (typeof d.meta.folioPago !== 'number') {
+      var sinFolio = (d.pagos || []).slice().sort(function (a, b) {
+        return (a.fecha || '') < (b.fecha || '') ? -1 : (a.fecha === b.fecha ? 0 : 1);
+      });
+      var f = 0;
+      sinFolio.forEach(function (p) { if (typeof p.folio !== 'number') p.folio = ++f; else f = Math.max(f, p.folio); });
+      d.meta.folioPago = f;
+    }
+
+    // Reglas nuevas con su valor de siempre
+    var c = d.condominio || {};
+    if (c.avisoDiasTras === undefined) c.avisoDiasTras = 3;
+    if (c.avisoRepetirDias === undefined) c.avisoRepetirDias = 7;
+    if (c.fondoCajaChica === undefined) c.fondoCajaChica = 5000;
+
+    // El campo de agrupación se llamaba "torre" cuando el ejemplo eran
+    // departamentos; en un condominio de casas es la calle.
+    (d.unidades || []).forEach(function (u) {
+      if (u.calle === undefined) u.calle = u.torre || '';
+    });
+    return d;
+  }
+
+  return {
+    /* --- ciclo de vida --- */
+    iniciar: function () {
+      driver = elegirDriver();
+      var guardado = driver.leer();
+      var usar = (guardado && guardado.version === 1) ? migrar(guardado) : null;
+
+      // Si lo guardado salió del condominio de EJEMPLO de una versión anterior, se
+      // vuelve a sembrar: quien abre el demo debe ver el actual, aunque haya
+      // jugado con él (registrar un pago de prueba no lo vuelve un condominio
+      // real). Un condominio real empieza vacío y no trae "semilla": ese nunca se
+      // toca. Por si acaso, la copia anterior se guarda aparte.
+      if (usar && usar.meta && usar.meta.semilla && usar.meta.semilla !== CC.Seed.SEMILLA) {
+        try { window.localStorage.setItem(LLAVE + '.anterior', JSON.stringify(usar)); } catch (e) { /* sin espacio */ }
+        usar = null;
+      }
+
+      estado = usar || migrar(CC.Seed.construir());
+      if (!usar) driver.escribir(estado);
+      return estado;
+    },
+    usarDriver: function (d) {
+      driver = d;
+      var guardado = driver.leer();
+      if (guardado) { estado = guardado; emitir(); }
+    },
+    driverActivo: function () { return driver ? driver.nombre : 'ninguno'; },
+    persistente: function () { return driver !== driverMemoria; },
+
+    /* --- lectura --- */
+    estado: function () { return estado; },
+    condominio: function () { return estado.condominio; },
+    unidades: function () { return estado.unidades; },
+    cargos: function () { return estado.cargos; },
+    pagos: function () { return estado.pagos; },
+    gastos: function () { return estado.gastos; },
+    avisos: function () { return estado.avisos; },
+    categorias: function () { return estado.categorias; },
+    recibos: function () { return estado.recibos || []; },
+    notas: function () { return estado.notas || []; },
+    difusiones: function () { return estado.difusiones || []; },
+    documentos: function () { return estado.documentos || []; },
+    reglamento: function () { return estado.reglamento; },
+    convenios: function () { return estado.convenios || []; },
+    avisosAdeudo: function () { return estado.avisosAdeudo || []; },
+    cajaChica: function () { return estado.cajaChica || []; },
+    amenidades: function () { return estado.amenidades || []; },
+    amenidad: function (id) {
+      var l = estado.amenidades || [];
+      for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i];
+      return null;
+    },
+    reservas: function () { return estado.reservas || []; },
+    esDemo: function () { return !!estado.meta.demo; },
+
+    unidad: function (id) {
+      var u = estado.unidades;
+      for (var i = 0; i < u.length; i++) if (u[i].id === id) return u[i];
+      return null;
+    },
+
+    /* --- suscripcion: las vistas se redibujan cuando cambian los datos --- */
+    alCambiar: function (fn) {
+      oyentes.push(fn);
+      return function () {
+        var i = oyentes.indexOf(fn);
+        if (i >= 0) oyentes.splice(i, 1);
+      };
+    },
+
+    /* --- escritura --- */
+    agregarPago: function (p) {
+      p.id = nuevoId('pag');
+      estado.meta.folioPago = (estado.meta.folioPago || 0) + 1;
+      p.folio = estado.meta.folioPago;
+      p.registrado = new Date().toISOString();
+      estado.pagos.push(p);
+      estado.meta.demo = false;
+      guardar();
+      return p;
+    },
+    borrarPago: function (id) {
+      estado.pagos = estado.pagos.filter(function (p) { return p.id !== id; });
+      guardar();
+    },
+
+    agregarCargo: function (c) {
+      c.id = nuevoId('car');
+      estado.cargos.push(c);
+      estado.meta.demo = false;
+      guardar();
+      return c;
+    },
+    agregarCargos: function (lista) {
+      for (var i = 0; i < lista.length; i++) {
+        lista[i].id = nuevoId('car');
+        estado.cargos.push(lista[i]);
+      }
+      estado.meta.demo = false;
+      guardar();
+      return lista.length;
+    },
+    borrarCargo: function (id) {
+      estado.cargos = estado.cargos.filter(function (c) { return c.id !== id; });
+      guardar();
+    },
+
+    agregarGasto: function (g) {
+      g.id = nuevoId('gas');
+      estado.gastos.push(g);
+      estado.meta.demo = false;
+      guardar();
+      return g;
+    },
+    actualizarGasto: function (id, cambios) {
+      var g = estado.gastos;
+      for (var i = 0; i < g.length; i++) {
+        if (g[i].id === id) { Object.assign(g[i], cambios); break; }
+      }
+      guardar();
+    },
+    borrarGasto: function (id) {
+      estado.gastos = estado.gastos.filter(function (g) { return g.id !== id; });
+      guardar();
+    },
+
+    agregarUnidad: function (u) {
+      u.id = nuevoId('uni');
+      estado.unidades.push(u);
+      estado.meta.demo = false;
+      guardar();
+      return u;
+    },
+    actualizarUnidad: function (id, cambios) {
+      var u = this.unidad(id);
+      if (u) { Object.assign(u, cambios); guardar(); }
+      return u;
+    },
+    borrarUnidad: function (id) {
+      estado.unidades = estado.unidades.filter(function (u) { return u.id !== id; });
+      estado.cargos = estado.cargos.filter(function (c) { return c.unidadId !== id; });
+      estado.pagos = estado.pagos.filter(function (p) { return p.unidadId !== id; });
+      estado.convenios = (estado.convenios || []).filter(function (c) { return c.unidadId !== id; });
+      estado.avisosAdeudo = (estado.avisosAdeudo || []).filter(function (a) { return a.unidadId !== id; });
+      estado.notas = (estado.notas || []).filter(function (n) { return n.unidadId !== id; });
+      guardar();
+    },
+
+    agregarAviso: function (a) {
+      a.id = nuevoId('avi');
+      estado.avisos.unshift(a);
+      estado.meta.demo = false;
+      guardar();
+      return a;
+    },
+    borrarAviso: function (id) {
+      estado.avisos = estado.avisos.filter(function (a) { return a.id !== id; });
+      guardar();
+    },
+
+    /* --- recibos de pago a proveedores (el del jardinero) --- */
+    siguienteFolio: function () {
+      return (estado.meta.folioRecibo || 0) + 1;
+    },
+    agregarRecibo: function (r) {
+      r.id = nuevoId('rec');
+      estado.meta.folioRecibo = (estado.meta.folioRecibo || 0) + 1;
+      r.folio = estado.meta.folioRecibo;
+      r.registrado = new Date().toISOString();
+      estado.recibos.unshift(r);
+      estado.meta.demo = false;
+      guardar();
+      return r;
+    },
+    recibo: function (id) {
+      var r = estado.recibos || [];
+      for (var i = 0; i < r.length; i++) if (r[i].id === id) return r[i];
+      return null;
+    },
+    borrarRecibo: function (id) {
+      var r = this.recibo(id);
+      if (r) {
+        // las imagenes viven aparte: hay que soltarlas a mano
+        if (r.firmaId) CC.Archivos.borrar(r.firmaId);
+        if (r.fotoId) CC.Archivos.borrar(r.fotoId);
+      }
+      estado.recibos = estado.recibos.filter(function (x) { return x.id !== id; });
+      guardar();
+    },
+
+    pago: function (id) {
+      var p = estado.pagos;
+      for (var i = 0; i < p.length; i++) if (p[i].id === id) return p[i];
+      return null;
+    },
+
+    /* --- convenios de pago en parcialidades --- */
+    agregarConvenio: function (c) {
+      c.id = nuevoId('cnv');
+      estado.meta.folioConvenio = (estado.meta.folioConvenio || 0) + 1;
+      c.folio = estado.meta.folioConvenio;
+      c.estado = 'activo';
+      c.registrado = new Date().toISOString();
+      estado.convenios.unshift(c);
+      estado.meta.demo = false;
+      guardar();
+      return c;
+    },
+    convenio: function (id) {
+      var l = estado.convenios || [];
+      for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i];
+      return null;
+    },
+    actualizarConvenio: function (id, cambios) {
+      var c = this.convenio(id);
+      if (c) { Object.assign(c, cambios); estado.meta.demo = false; guardar(); }
+      return c;
+    },
+
+    /* --- avisos de adeudo mandados a cada casa (WhatsApp o correo) --- */
+    registrarAvisoAdeudo: function (a) {
+      a.id = nuevoId('ava');
+      a.fecha = a.fecha || new Date().toISOString();
+      estado.avisosAdeudo.unshift(a);
+      estado.meta.demo = false;
+      guardar();
+      return a;
+    },
+
+    /* --- caja chica: el efectivo que maneja la administración --- */
+    agregarMovCaja: function (m) {
+      m.id = nuevoId('caj');
+      estado.meta.folioCaja = (estado.meta.folioCaja || 0) + 1;
+      m.folio = estado.meta.folioCaja;
+      m.registrado = new Date().toISOString();
+      estado.cajaChica.push(m);
+      estado.meta.demo = false;
+      guardar();
+      return m;
+    },
+    movCaja: function (id) {
+      var l = estado.cajaChica || [];
+      for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i];
+      return null;
+    },
+    borrarMovCaja: function (id) {
+      var m = this.movCaja(id);
+      if (!m) return;
+      if (m.firmaId) CC.Archivos.borrar(m.firmaId);
+      if (m.fotoId) CC.Archivos.borrar(m.fotoId);
+      // la reposición también salió de la cuenta del condominio como gasto
+      if (m.gastoId) estado.gastos = estado.gastos.filter(function (g) { return g.id !== m.gastoId; });
+      estado.cajaChica = estado.cajaChica.filter(function (x) { return x.id !== id; });
+      guardar();
+    },
+
+    /* --- reservas de áreas comunes (canchas) --- */
+    agregarReserva: function (r) {
+      r.id = nuevoId('res');
+      r.estado = 'confirmada';
+      r.registrado = new Date().toISOString();
+      estado.reservas.push(r);
+      estado.meta.demo = false;
+      guardar();
+      return r;
+    },
+    reserva: function (id) {
+      var l = estado.reservas || [];
+      for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i];
+      return null;
+    },
+    cancelarReserva: function (id, motivo) {
+      var r = this.reserva(id);
+      if (r) { r.estado = 'cancelada'; r.motivo = motivo || ''; r.cancelada = new Date().toISOString(); guardar(); }
+      return r;
+    },
+    guardarAmenidades: function (lista) {
+      estado.amenidades = lista;
+      estado.meta.demo = false;
+      guardar();
+    },
+
+    /* --- notas en la bitacora de una unidad --- */
+    agregarNota: function (n) {
+      n.id = nuevoId('not');
+      n.fecha = n.fecha || new Date().toISOString().slice(0, 10);
+      estado.notas.unshift(n);
+      estado.meta.demo = false;
+      guardar();
+      return n;
+    },
+    borrarNota: function (id) {
+      estado.notas = estado.notas.filter(function (n) { return n.id !== id; });
+      guardar();
+    },
+
+    /* --- difusiones enviadas a los residentes --- */
+    agregarDifusion: function (d) {
+      d.id = nuevoId('dif');
+      d.enviada = new Date().toISOString();
+      estado.difusiones.unshift(d);
+      estado.meta.demo = false;
+      guardar();
+      return d;
+    },
+    borrarDifusion: function (id) {
+      estado.difusiones = estado.difusiones.filter(function (d) { return d.id !== id; });
+      guardar();
+    },
+
+    /* --- expediente del condominio --- */
+    agregarDocumento: function (d) {
+      d.id = nuevoId('doc');
+      estado.documentos.unshift(d);
+      estado.meta.demo = false;
+      guardar();
+      return d;
+    },
+    borrarDocumento: function (id) {
+      var lista = estado.documentos || [];
+      for (var i = 0; i < lista.length; i++) {
+        if (lista[i].id === id && lista[i].fotoId) CC.Archivos.borrar(lista[i].fotoId);
+      }
+      estado.documentos = lista.filter(function (d) { return d.id !== id; });
+      guardar();
+    },
+
+    /* --- reglamento interno --- */
+    actualizarReglamento: function (cambios) {
+      Object.assign(estado.reglamento, cambios);
+      estado.meta.demo = false;
+      guardar();
+    },
+    agregarCapitulo: function (nombre) {
+      estado.reglamento.capitulos.push({ nombre: nombre, articulos: [] });
+      estado.meta.demo = false;
+      guardar();
+    },
+    borrarCapitulo: function (i) {
+      estado.reglamento.capitulos.splice(i, 1);
+      guardar();
+    },
+    guardarCapitulo: function (i, nombre, articulos) {
+      var cap = estado.reglamento.capitulos[i];
+      if (!cap) return;
+      cap.nombre = nombre;
+      cap.articulos = articulos;
+      estado.meta.demo = false;
+      guardar();
+    },
+
+    actualizarCondominio: function (cambios) {
+      Object.assign(estado.condominio, cambios);
+      estado.meta.demo = false;
+      guardar();
+    },
+    actualizarCategorias: function (lista) {
+      estado.categorias = lista;
+      guardar();
+    },
+
+    /* --- mantenimiento --- */
+    /** Vacia todo y deja la estructura lista para capturar un condominio real. */
+    empezarDeCero: function (datosCondominio) {
+      estado = migrar(CC.Seed.vacio(datosCondominio));
+      driver.escribir(estado);
+      emitir();
+    },
+    restaurarEjemplo: function () {
+      estado = migrar(CC.Seed.construir());
+      driver.escribir(estado);
+      emitir();
+    },
+    exportar: function () { return JSON.stringify(estado, null, 2); },
+    importar: function (texto) {
+      var datos = JSON.parse(texto);
+      if (!datos || datos.version !== 1 || !Array.isArray(datos.unidades)) {
+        throw new Error('El archivo no tiene el formato de Cuota Clara.');
+      }
+      estado = migrar(datos);
+      driver.escribir(estado);
+      emitir();
+    },
+    nuevoId: nuevoId
+  };
+})();
