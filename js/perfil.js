@@ -10,7 +10,7 @@
 window.CC = window.CC || {};
 CC.Perfil = {
   id: 'villascadiz',
-  semilla: 'cadiz-3',
+  semilla: 'cadiz-4',
 
   condominio: {
     nombre: 'Villas Cádiz',
@@ -25,9 +25,9 @@ CC.Perfil = {
     mesesGratisAnualidad: 1
   },
 
-  /* Casas 1 a 130 + la Casa 131 de prueba = 131. La clave es el número. */
+  /* Casas 1 a 131. La clave es el número. */
   calles: ['Villas Cádiz'],
-  casasPorCalle: 130,
+  casasPorCalle: 131,
   formatoClave: '{n}',
   prototipos: [
     { tipo: 'A', m2: 160, peso: 50 },
@@ -53,14 +53,9 @@ CC.Perfil = {
   cuotaExtra: 900,
   conceptoExtra: 'Cuota extraordinaria — resanado y pintura de las canchas de tenis',
 
-  /* Para ver llegar el aviso de adeudo a un WhatsApp de verdad (el de Fernando).
-     El demo es público: se quita poniendo casaPrueba: null. */
-  casaPrueba: {
-    id: 'uni_prueba_131', clave: '131', calle: 'Villas Cádiz', numero: 131,
-    prototipo: 'C', m2: 240, cuotaOverride: null,
-    propietario: 'Vecino de Prueba', inquilino: null,
-    telefono: '+52 33 1144 1101', email: '', ocupacion: 'Propietario'
-  },
+  /* Sin casa de prueba: el demo se enseña a otras personas y no debe llevar
+     ningún teléfono real (Fernando, 27-oct). */
+  casaPrueba: null,
 
   amenidades: [
     {
