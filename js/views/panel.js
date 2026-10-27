@@ -11,7 +11,7 @@ CC.vistas.panel = {
   acciones: function () {
     return [
       { texto: 'Registrar pago', icono: 'mas', clase: 'btn', accion: 'pago' },
-      { texto: 'Registrar gasto', icono: 'gastos', clase: 'btn btn--ghost', accion: 'gasto' }
+      { texto: 'Registrar egreso', icono: 'gastos', clase: 'btn btn--ghost', accion: 'gasto' }
     ];
   },
 
@@ -43,7 +43,7 @@ CC.vistas.panel = {
       var texto = CC.Model.avisoAdeudo(prueba.id, p);
       out.push('<div class="prueba">' +
         '<div class="prueba__txt"><span class="prueba__eyebrow">Pruébalo en vivo</span>' +
-        '<strong>' + esc(prueba.clave) + ' · ' + esc(prueba.propietario) + '</strong>' +
+        '<strong>Casa ' + esc(prueba.clave) + ' · ' + esc(prueba.propietario) + '</strong>' +
         '<span>Debe ' + esc(CC.fmt.money2(sp.saldo)) +
         (sp.desde ? ' desde ' + esc(CC.fmt.periodo(sp.desde).toLowerCase()) : '') +
         '. Manda el aviso y llega al WhatsApp <b class="num">' + esc(prueba.telefono) + '</b>.</span></div>' +
@@ -67,10 +67,11 @@ CC.vistas.panel = {
     /* --- Cifras del mes --- */
     out.push(CC.ui.stats([
       {
-        lab: 'Saldo en caja',
+        lab: 'Banco y caja chica',
         val: CC.fmt.money(caja),
         tono: caja < 0 ? 'crit' : null,
-        nota: '<span>De ese saldo, ' + esc(CC.fmt.money(fondo)) + ' es fondo de reserva</span>'
+        nota: '<span>Banco ' + esc(CC.fmt.money(CC.Model.saldoCuenta('banco'))) + ' · caja chica ' +
+          esc(CC.fmt.money(CC.Model.saldoCuenta('caja'))) + '</span>'
       },
       {
         lab: 'Cobrado del mes',
@@ -100,7 +101,7 @@ CC.vistas.panel = {
     var filasPend = pendientes.slice(0, 6).map(function (x) {
       var s = x.situacion;
       var clase = s.estado === 'moroso' ? 'row--crit' : s.estado === 'vencido' ? 'row--warn' : '';
-      return '<tr class="' + clase + '">' +
+      return '<tr class="' + clase + ' fila-clic" data-casa="' + esc(x.unidad.id) + '" title="Ver la casa">' +
         '<td><a href="#/unidad/' + esc(x.unidad.id) + '" class="strong">' + esc(x.unidad.clave) + '</a>' +
         '<div class="muted" style="font-size:11px">' + esc(x.unidad.inquilino || x.unidad.propietario) + '</div></td>' +
         '<td class="c">' + CC.ui.pill(s.estado) + '</td>' +
@@ -132,7 +133,7 @@ CC.vistas.panel = {
     var egresos =
       '<div class="panelbox">' +
       '<div class="panelbox__head"><h3>En qué se fue el dinero</h3>' +
-      '<a class="btn btn--sm btn--soft" href="#/gastos">Ver gastos</a></div>' +
+      '<a class="btn btn--sm btn--soft" href="#/gastos">Ver egresos</a></div>' +
       '<div class="panelbox__body">' +
       (cats.length
         ? CC.ui.barras(cats.slice(0, 7).map(function (c) {
@@ -233,7 +234,7 @@ CC.vistas.panel = {
           unidadId: prueba.id, canal: 'whatsapp',
           saldo: Math.round(s.saldo * 100) / 100, meses: s.mesesVencidos
         });
-        CC.ui.toast('Aviso anotado en el historial de ' + prueba.clave, 'good');
+        CC.ui.toast('Aviso anotado en el historial de la casa ' + prueba.clave, 'good');
       }, 0);
     });
   }

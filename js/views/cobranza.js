@@ -81,7 +81,7 @@ CC.vistas.cobranza = {
       var cubierto = delMes > 0 && pendMes <= 0.005;
       var adelantado = cubierto && pagado < 0.005;
 
-      return '<tr class="' + clase + '">' +
+      return '<tr class="' + clase + ' fila-clic" data-casa="' + esc(u.id) + '" title="Ver la casa">' +
         '<td><a href="#/unidad/' + esc(u.id) + '" class="strong">' + esc(u.clave) + '</a>' +
         '<div class="muted" style="font-size:11px">' + esc(u.inquilino || u.propietario || '') + '</div></td>' +
         '<td class="r">' + (delMes ? esc(CC.fmt.money2(delMes)) : '<span class="muted">sin cargo</span>') + '</td>' +
@@ -123,7 +123,7 @@ CC.vistas.cobranza = {
       '<span class="eyebrow">' + recibidos.length + ' movimientos</span></div>' +
       (recibidos.length
         ? '<div class="tablewrap"><table class="ledger">' +
-          '<thead><tr><th>Folio</th><th>Fecha</th><th>Casa</th><th>Método</th><th>Referencia</th>' +
+          '<thead><tr><th>Folio</th><th>Fecha</th><th>Casa</th><th>Forma</th><th>Referencia</th>' +
           '<th class="r">Monto</th><th class="noprint"></th></tr></thead><tbody>' +
           recibidos.map(function (x) {
             var u = CC.Store.unidad(x.unidadId);
@@ -132,7 +132,8 @@ CC.vistas.cobranza = {
               '<td class="mono" style="font-size:12px">' + esc(CC.fmt.fechaCorta(x.fecha)) + '</td>' +
               '<td class="strong">' + esc(u ? u.clave : '—') +
               (x.convenioId ? ' <span class="pill pill--flat pill--mute">convenio</span>' : '') + '</td>' +
-              '<td>' + esc(x.metodo || '—') + '</td>' +
+              '<td><div class="cellstack"><span>' + esc(x.metodo || '—') + '</span><small>' +
+              esc(x.cuenta === 'caja' ? 'Caja chica' : 'Banco') + '</small></div></td>' +
               '<td class="mono" style="font-size:12px;color:var(--muted)">' + esc(x.referencia || '—') + '</td>' +
               '<td class="r strong">' + esc(CC.fmt.money2(x.monto)) + '</td>' +
               '<td class="r noprint" style="white-space:nowrap">' +
@@ -222,7 +223,7 @@ CC.vistas.cobranza = {
 
   formularioPago: function (unidadId, periodo) {
     var esc = CC.ui.esc;
-    var unidades = CC.Store.unidades().slice().sort(function (a, b) { return a.clave < b.clave ? -1 : 1; });
+    var unidades = CC.Store.unidades().slice().sort(CC.Model.ordenCasas);
     if (!unidades.length) { CC.ui.toast('Primero captura al menos una casa', 'crit'); return; }
 
     var elegida = unidadId || unidades[0].id;
@@ -260,15 +261,22 @@ CC.vistas.cobranza = {
         return '<option value="' + esc(x) + '"' + (x === periodo ? ' selected' : '') + '>' + esc(CC.fmt.periodo(x)) + '</option>';
       }).join('') + '</select></label>' +
 
-      '<label class="field"><span class="field__lab">Método</span>' +
+      '<label class="field"><span class="field__lab">Forma de pago</span>' +
       '<select class="input" id="pMetodo">' +
-      ['Transferencia', 'Depósito', 'Efectivo', 'Cheque', 'Domiciliación'].map(function (m) {
+      ['Transferencia', 'Depósito', 'Efectivo', 'Cheque', 'Domiciliación', 'Otra (terminal, CoDi)'].map(function (m) {
         return '<option>' + m + '</option>';
       }).join('') + '</select></label>' +
+
+      '<label class="field"><span class="field__lab">Entra a</span>' +
+      '<select class="input" id="pCuenta">' + CC.Store.cuentas().map(function (c) {
+        return '<option value="' + esc(c.id) + '">' + esc(c.nombre) + '</option>';
+      }).join('') + '</select><span class="field__hint">El efectivo va a la caja chica</span></label>' +
 
       '<label class="field"><span class="field__lab">Referencia</span>' +
       '<input class="input mono" id="pRef" placeholder="Folio o últimos dígitos"></label>' +
       '</div>' +
+
+      '<div class="mesespago" id="pMeses"></div>' +
 
       '<label class="check" id="pCvWrap" hidden><input type="checkbox" id="pCv" checked> ' +
       '<span id="pCvTxt"></span></label>' +
@@ -322,13 +330,45 @@ CC.vistas.cobranza = {
             (gratis ? ' · ' + gratis + (gratis === 1 ? ' mes gratis' : ' meses gratis') : '') +
             (s.saldo > 0.005 ? ' · incluye lo que debe (' + CC.fmt.money2(s.saldo) + ')' : '');
         }
-        selQue.onchange = calcularAdelanto;
+        selQue.onchange = function () { calcularAdelanto(); pintarMeses(); };
+
+        /* Los meses que debe, para marcar cuáles paga: la suma va al monto */
+        var cajaMeses = cuerpo.querySelector('#pMeses');
+        function pintarMeses() {
+          var meses = Number(selQue.value) ? [] : CC.Model.pendientesPorMes(selU.value, '9999-12');
+          if (!meses.length) { cajaMeses.innerHTML = ''; return; }
+          cajaMeses.innerHTML = '<span class="field__lab">Meses que paga</span>' +
+            '<div class="mesespago__lista">' + meses.map(function (m, i) {
+              return '<label class="mesespago__mes"><input type="checkbox" data-mes="' + i + '" data-monto="' + m.total.toFixed(2) + '" checked>' +
+                '<span>' + esc(CC.fmt.periodo(m.periodo)) + '</span><b class="num">' + esc(CC.fmt.money2(m.total)) + '</b>' +
+                (m.partes.length > 1 ? '<small>' + esc(m.partes.map(function (x) { return x.etiqueta; }).join(' + ')) + '</small>' : '') +
+                '</label>';
+            }).join('') + '</div><span class="field__hint" id="pMesesHint"></span>';
+          cajaMeses.querySelectorAll('[data-mes]').forEach(function (cb) { cb.onchange = sumarMeses; });
+        }
+        function sumarMeses() {
+          var cbs = Array.prototype.slice.call(cajaMeses.querySelectorAll('[data-mes]'));
+          var total = cbs.reduce(function (a, cb) { return a + (cb.checked ? Number(cb.getAttribute('data-monto')) : 0); }, 0);
+          inMonto.value = total.toFixed(2);
+          // El pago se aplica a lo más viejo: si dejan un mes viejo sin marcar, se avisa
+          var saltado = false, visto = false;
+          cbs.forEach(function (cb) { if (cb.checked) visto = true; else if (!visto) saltado = true; });
+          var conAlgo = cbs.some(function (cb) { return cb.checked; });
+          cajaMeses.querySelector('#pMesesHint').textContent = saltado && conAlgo
+            ? 'Ojo: el pago se aplica primero al mes más viejo que debe, aunque no lo marques.' : '';
+        }
+        pintarMeses();
+
+        /* El efectivo entra a la caja chica; lo demás, al banco */
+        var selMetodo = cuerpo.querySelector('#pMetodo'), selCuenta = cuerpo.querySelector('#pCuenta');
+        selMetodo.onchange = function () { selCuenta.value = selMetodo.value === 'Efectivo' ? 'caja' : 'banco'; };
 
         selU.onchange = function () {
           inMonto.value = sugerido(selU.value);
           pista();
           if (cvActual && cvActual.siguiente) inMonto.value = cvActual.siguiente.monto.toFixed(2);
           if (Number(selQue.value)) calcularAdelanto();
+          pintarMeses();
         };
         cuerpo.querySelector('#pCancel').onclick = CC.ui.cerrarModal;
 
@@ -347,6 +387,7 @@ CC.vistas.cobranza = {
             fecha: cuerpo.querySelector('#pFecha').value || CC.per.hoyISO(),
             periodo: cuerpo.querySelector('#pPeriodo').value,
             metodo: cuerpo.querySelector('#pMetodo').value,
+            cuenta: selCuenta.value,
             referencia: cuerpo.querySelector('#pRef').value.trim(),
             convenioId: cvActual && cvCheck.checked ? cvActual.convenio.id : null,
             nota: cuerpo.querySelector('#pNota').value.trim() || notaAd

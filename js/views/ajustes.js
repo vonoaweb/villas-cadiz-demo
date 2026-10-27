@@ -45,14 +45,31 @@ CC.vistas.ajustes = {
       '<div class="formgrid">' +
       campoNum('cPresupuesto', 'Presupuesto mensual', c.presupuestoMensual, 'Se reparte entre las casas por indiviso') +
       campoNum('cDia', 'Día de vencimiento', c.diaVencimiento, 'Día del mes en que vence la cuota') +
-      campoNum('cMora', 'Recargo mensual (%)', c.tasaMoraMensual, 'Sobre el saldo vencido') +
       campoNum('cFondo', 'Fondo de reserva (%)', c.fondoReservaPct, 'Parte de lo cobrado que se aparta') +
-      campoNum('cCaja', 'Saldo inicial en caja', c.saldoInicialCaja, 'Lo que había antes del primer registro') +
       campoNum('cAvisoDias', 'Avisar a los … días', c.avisoDiasTras, 'Días después del vencimiento para el primer aviso') +
       campoNum('cAvisoCada', 'Repetir aviso cada … días', c.avisoRepetirDias, 'Mientras la casa siga debiendo') +
-      campoNum('cFondoCaja', 'Fondo de caja chica', c.fondoCajaChica, 'Efectivo fijo para gastos menores') +
       campoNum('cAnual', 'Meses gratis por pagar el año', c.mesesGratisAnualidad || 0, '0 = la anualidad no tiene descuento') +
       '</div>' +
+      /* Recargos: montos fijos según el día en que se paga, un porcentaje o nada */
+      '<div class="recargos">' +
+      '<span class="field__lab">Recargo por pago tardío</span>' +
+      '<div class="chips" style="margin:8px 0 10px">' + [['tramos', 'Monto fijo según el día de pago'], ['porcentaje', 'Porcentaje mensual'], ['ninguno', 'Sin recargo']]
+        .map(function (m) {
+          return '<label class="chip' + ((c.recargoModo || 'porcentaje') === m[0] ? ' is-on' : '') + '"><input type="radio" name="cModo" value="' + m[0] + '"' +
+            ((c.recargoModo || 'porcentaje') === m[0] ? ' checked' : '') + ' hidden>' + m[1] + '</label>';
+        }).join('') + '</div>' +
+      '<div id="cTramos"' + (c.recargoModo === 'tramos' ? '' : ' hidden') + '>' +
+      (c.recargoTramos || []).concat([{ dia: '', monto: '' }]).slice(0, 4).map(function (t, i) {
+        return '<div class="tramo">Si se paga desde el día <input class="input input--sm num" type="number" min="1" max="31" data-tramo="' + i +
+          '" data-campo="dia" value="' + esc(t.dia) + '"> el recargo es de $<input class="input input--sm num" type="number" min="0" step="1" data-tramo="' + i +
+          '" data-campo="monto" value="' + esc(t.monto) + '"></div>';
+      }).join('') +
+      '<p class="field__hint">El sistema pone el recargo solo, uno por mes, y lo ajusta si el pago se registra con otra fecha. ' +
+      'Deja vacío un renglón para quitarlo.</p></div>' +
+      '<div id="cPorc"' + ((c.recargoModo || 'porcentaje') === 'porcentaje' ? '' : ' hidden') + '>' +
+      campoNum('cMora', 'Recargo mensual (%)', c.tasaMoraMensual, 'Se calcula sobre el saldo vencido, como estimado; no se carga') +
+      '</div></div>' +
+
       '<label class="check" style="background:var(--surface-2);border-color:var(--rule);color:var(--ink-2)">' +
       '<input type="checkbox" id="cVisitas"' + (c.registroVisitas ? ' checked' : '') + '> ' +
       'Llevar el registro de visitas de la caseta</label>' +
@@ -69,22 +86,26 @@ CC.vistas.ajustes = {
     /* --- Presupuesto por servicio --- */
     out.push(
       '<div class="panelbox">' +
-      '<div class="panelbox__head"><h3>Presupuesto por servicio</h3>' +
+      '<div class="panelbox__head"><h3>Categorías de egresos y presupuesto</h3>' +
       '<button class="btn btn--sm btn--ghost" id="bNuevaCat">Agregar servicio</button></div>' +
       '<div class="tablewrap"><table class="ledger">' +
-      '<thead><tr><th>Servicio</th><th>Proveedor habitual</th><th class="r" style="width:150px">Presupuesto mensual</th><th class="noprint"></th></tr></thead>' +
+      '<thead><tr><th>Categoría</th><th>Tipo</th><th>Proveedor habitual</th><th class="r" style="width:150px">Presupuesto mensual</th><th class="noprint"></th></tr></thead>' +
       '<tbody>' + (cats.length ? cats.map(function (x, i) {
         return '<tr>' +
           '<td><input class="input input--sm" data-cat="' + i + '" data-campo="nombre" value="' + esc(x.nombre) + '"></td>' +
+          '<td><select class="input input--sm" data-cat="' + i + '" data-campo="grupo">' +
+          [['fijo', 'Fijo'], ['variable', 'Variable'], ['otro', 'Otro']].map(function (g) {
+            return '<option value="' + g[0] + '"' + ((x.grupo || 'variable') === g[0] ? ' selected' : '') + '>' + g[1] + '</option>';
+          }).join('') + '</select></td>' +
           '<td><input class="input input--sm" data-cat="' + i + '" data-campo="proveedor" value="' + esc(x.proveedor || '') + '"></td>' +
           '<td><input class="input input--sm num" style="text-align:right" type="number" min="0" step="0.01" data-cat="' + i + '" data-campo="presupuesto" value="' + esc(x.presupuesto) + '"></td>' +
           '<td class="r noprint"><button class="iconbtn" data-delcat="' + i + '" title="Quitar servicio">' +
           CC.ui.icono('cerrar', 'i--sm') + '</button></td>' +
           '</tr>';
-      }).join('') : '<tr><td colspan="4"><div class="empty"><strong>Sin servicios definidos</strong>' +
+      }).join('') : '<tr><td colspan="5"><div class="empty"><strong>Sin categorías</strong>' +
         '<p>Agrega los servicios que paga el condominio para comparar presupuesto contra gasto real.</p></div></td></tr>') +
       '</tbody>' +
-      '<tfoot><tr><td colspan="2">Total presupuestado al mes</td>' +
+      '<tfoot><tr><td colspan="3">Total presupuestado al mes</td>' +
       '<td class="r">' + esc(CC.fmt.money2(totalPresupuesto)) + '</td><td></td></tr></tfoot>' +
       '</table></div>' +
       '<div class="panelbox__body" style="border-top:1px solid var(--rule)">' +
@@ -92,8 +113,9 @@ CC.vistas.ajustes = {
       '</div>');
 
     /* --- Áreas que se apartan (canchas, salón, asador) --- */
+    // Un condominio que no aparta áreas (perfil con reservas: false) no ve esta sección
     var ams = CC.Store.amenidades();
-    out.push(
+    if (!(CC.Perfil && CC.Perfil.reservas === false)) out.push(
       '<div class="panelbox">' +
       '<div class="panelbox__head"><h3>Áreas que se apartan</h3>' +
       '<button class="btn btn--sm btn--ghost" id="bNuevaArea">Agregar área</button></div>' +
@@ -128,10 +150,17 @@ CC.vistas.ajustes = {
     out.push(
       '<div class="panelbox">' +
       '<div class="panelbox__head"><h3>Tus datos</h3>' +
-      '<span class="eyebrow">' + (persistente ? 'Guardado en este navegador' : 'Solo en memoria') + '</span></div>' +
+      '<span class="eyebrow">' + (CC.Escritorio ? 'Guardado en esta computadora' : persistente ? 'Guardado en este navegador' : 'Solo en memoria') + '</span></div>' +
       '<div class="panelbox__body stack">' +
 
-      (persistente
+      (CC.Escritorio
+        ? '<p style="font-size:12.5px;color:var(--ink-2);max-width:66ch">La base de datos es un archivo en <strong>Documentos\\Cuota Clara</strong> ' +
+          'de esta computadora y se guarda sola con cada cambio. Cada día queda una copia en la carpeta <strong>Respaldos</strong> ' +
+          '(se guardan 90 días). Para tener otra copia fuera de la computadora, copia esa carpeta a una memoria USB.</p>' +
+          '<div class="formrow" style="gap:9px"><button class="btn btn--soft" id="bCarpeta">Abrir la carpeta de datos</button>' +
+          '<button class="btn btn--ghost" id="bBuscarAct">Buscar actualizaciones</button>' +
+          '<span class="field__hint" style="align-self:center">Versión ' + esc(CC.Escritorio.version) + '</span></div>'
+        : persistente
         ? '<p style="font-size:12.5px;color:var(--ink-2);max-width:66ch">La información se guarda en este navegador y sigue ' +
           'aquí la próxima vez que abras la aplicación. No viaja a ningún servidor. Copia el respaldo de vez en cuando: ' +
           'si borras los datos del navegador, se pierde.</p>'
@@ -190,10 +219,10 @@ CC.vistas.ajustes = {
         diaVencimiento: Math.min(28, Math.max(1, Number(v('cDia')) || 10)),
         tasaMoraMensual: Number(v('cMora')) || 0,
         fondoReservaPct: Number(v('cFondo')) || 0,
-        saldoInicialCaja: Number(v('cCaja')) || 0,
+
         avisoDiasTras: Math.max(0, Math.round(Number(v('cAvisoDias')) || 0)),
         avisoRepetirDias: Math.max(1, Math.round(Number(v('cAvisoCada')) || 7)),
-        fondoCajaChica: Math.max(0, Number(v('cFondoCaja')) || 0),
+
         mesesGratisAnualidad: Math.max(0, Math.min(6, Math.round(Number(v('cAnual')) || 0))),
         registroVisitas: !!(raiz.querySelector('#cVisitas') || {}).checked
       });
@@ -201,7 +230,31 @@ CC.vistas.ajustes = {
     };
 
     /* Las reglas de cobro se guardan con el mismo boton */
-    ['cPresupuesto', 'cDia', 'cMora', 'cFondo', 'cCaja', 'cAvisoDias', 'cAvisoCada', 'cFondoCaja', 'cAnual', 'cVisitas'].forEach(function (id) {
+    /* Recargos: el tipo y sus tramos */
+    raiz.querySelectorAll('input[name="cModo"]').forEach(function (r) {
+      r.onchange = function () {
+        var modo = raiz.querySelector('input[name="cModo"]:checked').value;
+        CC.Store.actualizarCondominio({ recargoModo: modo });
+        CC.Model.aplicarRecargos();
+        CC.ui.toast(modo === 'tramos' ? 'Recargos por día de pago activados' : modo === 'ninguno' ? 'Sin recargos' : 'Recargo por porcentaje', 'good');
+      };
+    });
+    raiz.querySelectorAll('[data-tramo]').forEach(function (inp) {
+      inp.onchange = function () {
+        var t = [];
+        raiz.querySelectorAll('[data-tramo][data-campo="dia"]').forEach(function (d) {
+          var i = d.getAttribute('data-tramo');
+          var m = raiz.querySelector('[data-tramo="' + i + '"][data-campo="monto"]');
+          if (Number(d.value) >= 1 && Number(m.value) > 0) t.push({ dia: Number(d.value), monto: Number(m.value) });
+        });
+        t.sort(function (a, b) { return a.dia - b.dia; });
+        CC.Store.actualizarCondominio({ recargoTramos: t });
+        CC.Model.aplicarRecargos();
+        CC.ui.toast('Recargos actualizados', 'good');
+      };
+    });
+
+    ['cPresupuesto', 'cDia', 'cMora', 'cFondo', 'cAvisoDias', 'cAvisoCada', 'cAnual', 'cVisitas'].forEach(function (id) {
       var e = raiz.querySelector('#' + id);
       if (e) e.onchange = function () { raiz.querySelector('#bGuardarCond').click(); };
     });
@@ -221,7 +274,8 @@ CC.vistas.ajustes = {
       CC.Store.guardarAmenidades(leerAreas().filter(function (a) { return a.nombre; }));
       CC.ui.toast('Áreas guardadas', 'good');
     };
-    raiz.querySelector('#bNuevaArea').onclick = function () {
+    var bNueva = raiz.querySelector('#bNuevaArea');
+    if (bNueva) bNueva.onclick = function () {
       var l = leerAreas();
       l.push({
         id: CC.Store.nuevoId('ame'), nombre: 'Nueva área', tipo: 'area' + (l.length + 1),
@@ -267,6 +321,17 @@ CC.vistas.ajustes = {
 
     /* Guardar la base de datos como archivo: es lo que la mayoría entiende por
        "tener sus datos". Queda un .json que se puede copiar a una USB. */
+    var bCarpeta = raiz.querySelector('#bCarpeta');
+    if (bCarpeta) bCarpeta.onclick = function () { CC.Escritorio.abrirCarpeta(); };
+    var bBuscar = raiz.querySelector('#bBuscarAct');
+    if (bBuscar) bBuscar.onclick = function () {
+      bBuscar.disabled = true;
+      CC.Escritorio.buscarActualizacion().then(function (hay) {
+        bBuscar.disabled = false;
+        CC.ui.toast(hay ? 'Hay una versión nueva; se está descargando y te aviso para reiniciar' : 'Ya tienes la versión más reciente', 'good');
+      });
+    };
+
     raiz.querySelector('#bDescargar').onclick = function () {
       var nombre = (CC.Store.condominio().nombre || 'condominio')
         .normalize('NFD').replace(/[̀-ͯ]/g, '')

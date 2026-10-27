@@ -1,15 +1,16 @@
 /* perfil.js — Villas Cádiz (demo personalizado, 26-oct-2026).
  *
  * Del condominio sabemos el nombre, que son 131 casas y que tienen canchas de
- * tenis y casa club (notas de Fernando). Las calles, los vecinos, los importes
- * y la cuenta bancaria son de ejemplo: se cambian por los reales en cuanto nos
+ * tenis y casa club (notas de Fernando). Las casas se conocen por su número
+ * (Fernando, 27-oct: "que solo diga los números y abajo los nombres"). Los
+ * vecinos, los importes y la cuenta bancaria son de ejemplo: se cambian por los reales en cuanto nos
  * den su padrón. Lo que pidieron: apartar canchas y casa club, registro de
  * visitas, pagos adelantados y anualidad, y que cada vecino vea lo suyo.
  */
 window.CC = window.CC || {};
 CC.Perfil = {
   id: 'villascadiz',
-  semilla: 'cadiz-2',
+  semilla: 'cadiz-3',
 
   condominio: {
     nombre: 'Villas Cádiz',
@@ -24,9 +25,10 @@ CC.Perfil = {
     mesesGratisAnualidad: 1
   },
 
-  /* 130 casas en cinco andadores + la Casa 131 de prueba = 131 */
-  calles: ['Andador Jerez', 'Andador Tarifa', 'Andador Sanlúcar', 'Andador Chiclana', 'Andador Rota'],
-  casasPorCalle: [26, 26, 26, 26, 26],
+  /* Casas 1 a 130 + la Casa 131 de prueba = 131. La clave es el número. */
+  calles: ['Villas Cádiz'],
+  casasPorCalle: 130,
+  formatoClave: '{n}',
   prototipos: [
     { tipo: 'A', m2: 160, peso: 50 },
     { tipo: 'B', m2: 200, peso: 35 },
@@ -54,7 +56,7 @@ CC.Perfil = {
   /* Para ver llegar el aviso de adeudo a un WhatsApp de verdad (el de Fernando).
      El demo es público: se quita poniendo casaPrueba: null. */
   casaPrueba: {
-    id: 'uni_prueba_131', clave: 'Casa 131', calle: 'Casa de prueba', numero: 131,
+    id: 'uni_prueba_131', clave: '131', calle: 'Villas Cádiz', numero: 131,
     prototipo: 'C', m2: 240, cuotaOverride: null,
     propietario: 'Vecino de Prueba', inquilino: null,
     telefono: '+52 33 1144 1101', email: '', ocupacion: 'Propietario'

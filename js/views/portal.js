@@ -221,8 +221,7 @@ CC.vistas.portal = {
         (cond.telefono ? ' · ' + esc(cond.telefono) : '') +
         (cond.email ? ' · ' + esc(cond.email) : '') + '</p></div>' +
         '<p class="muted" style="font-size:11.5px">La cuota vence el día ' + esc(cond.diaVencimiento) +
-        ' de cada mes. Después de esa fecha se genera un recargo de ' + esc(cond.tasaMoraMensual) +
-        '% mensual sobre el saldo vencido.</p>' +
+        ' de cada mes; ' + esc(CC.Model.textoRecargo()) + '.</p>' +
         '</div></div>');
     }
 

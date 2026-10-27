@@ -216,6 +216,61 @@ svg.i--sm{width:15px;height:15px}
   .tabbar__item.is-on{color:var(--accent);background:var(--accent-soft)}
 }
 
+/* ---------- Meses que paga (registrar pago) ---------- */
+.mesespago{margin-top:14px;display:flex;flex-direction:column;gap:6px}
+.mesespago:empty{display:none}
+.mesespago__lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.mesespago__mes{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;align-items:center;padding:8px 10px;border:1px solid var(--rule);
+  border-radius:var(--r-sm);background:var(--surface-2);font-size:12.5px;cursor:pointer}
+.mesespago__mes input{grid-row:span 2;width:16px;height:16px;accent-color:var(--accent)}
+.mesespago__mes b{font-weight:600;color:var(--ink)}
+.mesespago__mes small{grid-column:2;font-size:10.5px;color:var(--muted)}
+.mesespago__mes:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+
+/* ---------- Formularios ---------- */
+.fila2{display:grid;grid-template-columns:1fr 120px;gap:8px}
+.check--suave{background:var(--surface-2);border-color:var(--rule);color:var(--ink-2)}
+.historial{margin-top:14px;font-size:12px;color:var(--muted)}
+.historial summary{cursor:pointer;font-weight:600;color:var(--ink-2)}
+.historial ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+.linkbtn{background:none;border:0;padding:0;font:inherit;font-size:11px;color:var(--accent-2);text-decoration:underline;cursor:pointer}
+.recargos{margin-top:16px;padding:14px;border:1px solid var(--rule);border-radius:var(--r-md);background:var(--surface-2)}
+.recargos .chip input{display:none}
+.tramo{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2);margin-bottom:6px}
+.tramo .input{width:80px;text-align:right}
+
+/* ---------- Egresos ---------- */
+tr.row--cancelado td{color:var(--muted);text-decoration:line-through}
+tr.row--cancelado td:last-child,tr.row--cancelado td .pill{text-decoration:none}
+tr.fila-clic{cursor:pointer}
+tr.fila-clic:hover td{background:var(--accent-soft)}
+tr.subtotal td{font-size:12px;color:var(--muted);font-weight:600;background:var(--surface-2)}
+.recibo--cancelado{opacity:.6}
+
+/* ---------- Banco y caja chica ---------- */
+.cuentas{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.cuenta{display:flex;flex-direction:column;gap:4px;text-align:left;padding:16px 18px;border-radius:var(--r-md);
+  border:1px solid var(--rule);background:var(--surface);font:inherit;color:var(--ink-2);cursor:pointer}
+.cuenta.is-on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.cuenta__nom{font:600 10.5px/1.3 var(--f-sans);text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.cuenta strong{font-size:24px;font-weight:600;color:var(--ink);letter-spacing:-.02em}
+.cuenta__det{font-size:11.5px;color:var(--muted)}
+.cuenta__mes{font-size:12px;margin-top:4px}
+tr.row--traspaso td{background:var(--surface-2)}
+.arqueo__dif{min-height:20px;margin:12px 0;font-size:13px}
+.conc__tit{margin:18px 0 2px;font:600 13px/1.3 var(--f-sans)}
+
+/* ---------- Reportes de matriz ---------- */
+.ledger--matriz td,.ledger--matriz th{padding-left:9px;padding-right:9px;font-size:12px}
+.celda-clic{cursor:pointer}
+.celda-clic:hover{background:var(--accent-soft);color:var(--accent)}
+.celda-debe{color:var(--crit);font-weight:600}
+
+/* ---------- Programa de escritorio: versión nueva ---------- */
+.actualizacion{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:95;display:flex;align-items:center;gap:12px;
+  padding:12px 14px 12px 18px;border-radius:var(--r-md);background:var(--ink);color:#fff;font-size:13px;box-shadow:var(--shadow-2);max-width:calc(100% - 32px)}
+.actualizacion .iconbtn{color:#fff}
+
 /* ---------- Lo que toca hacer hoy ---------- */
 .cta{
   display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 18px;

@@ -145,6 +145,13 @@
       else if (ACCIONES_GLOBALES[nombre]) ACCIONES_GLOBALES[nombre](c);
     });
 
+    // En las listas de casas, tocar cualquier parte de la fila (el nombre, el saldo) abre la casa
+    document.addEventListener('click', function (e) {
+      var fila = e.target.closest ? e.target.closest('tr[data-casa]') : null;
+      if (!fila || e.target.closest('a, button, input, select, textarea, label')) return;
+      location.hash = '#/unidad/' + fila.getAttribute('data-casa');
+    });
+
     // Cierre de la ventana modal
     document.getElementById('modal').addEventListener('click', function (e) {
       if (e.target.closest('[data-close]')) CC.ui.cerrarModal();
@@ -170,6 +177,8 @@
     window.addEventListener('hashchange', alCambiarHash);
 
     // Cuando cambian los datos, se redibuja la vista actual
+    // Los recargos se ponen al día solos con cada cambio (un pago registrado tarde, por ejemplo)
+    CC.Store.alCambiar(function () { CC.Model.aplicarRecargos(); });
     CC.Store.alCambiar(function () { dibujar(); });
   }
 
@@ -177,6 +186,7 @@
   function iniciar() {
     CC.ui.aplicarTema(CC.ui.leerTema());
     CC.Store.iniciar();
+    CC.Model.aplicarRecargos();
     ruta = leerHash();
     conectar();
     dibujar();
